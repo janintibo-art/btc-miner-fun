@@ -174,6 +174,7 @@ import android.Manifest
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.os.Build
+import android.view.WindowManager
 import io.flutter.embedding.android.FlutterActivity
 import io.flutter.embedding.engine.FlutterEngine
 import io.flutter.plugin.common.MethodChannel
@@ -217,6 +218,22 @@ class MainActivity : FlutterActivity() {
                     else -> result.notImplemented()
                 }
             }
+
+        MethodChannel(flutterEngine.dartExecutor.binaryMessenger, "btc_miner_fun/security")
+            .setMethodCallHandler { call, result ->
+                when (call.method) {
+                    "setProtected" -> {
+                        val enabled = call.argument<Boolean>("enabled") ?: false
+                        if (enabled) {
+                            window.addFlags(WindowManager.LayoutParams.FLAG_SECURE)
+                        } else {
+                            window.clearFlags(WindowManager.LayoutParams.FLAG_SECURE)
+                        }
+                        result.success(true)
+                    }
+                    else -> result.notImplemented()
+                }
+            }
     }
 
     private fun ensureNotificationPermission() {
@@ -237,6 +254,23 @@ print("MainActivity.kt reecrit avec le pont MethodChannel.")
 # 4. Manifeste
 # --------------------------------------------------------------------------
 text = MANIFEST.read_text(encoding="utf-8")
+
+# Le coffre contient une phrase BIP39 chiffree. Les sauvegardes Android
+# automatiques sont desactivees pour ne pas restaurer un blob chiffre sur un
+# appareil dont la cle Keystore est differente.
+if 'android:allowBackup=' not in text:
+    text = text.replace(
+        '<application',
+        '<application\n        android:allowBackup="false"',
+        1,
+    )
+else:
+    text = re.sub(
+        r'android:allowBackup="[^"]*"',
+        'android:allowBackup="false"',
+        text,
+        count=1,
+    )
 
 # Migration si le script est relance sur un ancien dossier Android.
 text = text.replace(
@@ -292,4 +326,33 @@ text = text.replace("</application>", service_block + "    </application>", 1)
 text = text.replace('android:label="btc_miner_fun"', 'android:label="BTC Miner Fun"')
 
 MANIFEST.write_text(text, encoding="utf-8")
-print("Manifeste mis a jour (foreground service specialUse).")
+print("Manifeste mis a jour (foreground service specialUse + backup desactive).")
+
+# --------------------------------------------------------------------------
+# 5. flutter_secure_storage 11 exige Android API 23 minimum.
+# --------------------------------------------------------------------------
+gradle_kts = pathlib.Path("android/app/build.gradle.kts")
+gradle_groovy = pathlib.Path("android/app/build.gradle")
+
+if gradle_kts.exists():
+    gradle = gradle_kts.read_text(encoding="utf-8")
+    gradle = re.sub(
+        r'minSdk\s*=\s*flutter\.minSdkVersion',
+        'minSdk = maxOf(flutter.minSdkVersion, 24)',
+        gradle,
+        count=1,
+    )
+    gradle_kts.write_text(gradle, encoding="utf-8")
+    print("minSdk Android garanti >= 24 (Kotlin DSL).")
+elif gradle_groovy.exists():
+    gradle = gradle_groovy.read_text(encoding="utf-8")
+    gradle = re.sub(
+        r'minSdkVersion\s+flutter\.minSdkVersion',
+        'minSdkVersion Math.max(flutter.minSdkVersion, 23)',
+        gradle,
+        count=1,
+    )
+    gradle_groovy.write_text(gradle, encoding="utf-8")
+    print("minSdk Android garanti >= 23 (Groovy).")
+else:
+    print("Attention : build.gradle Android introuvable, minSdk non verifie.")

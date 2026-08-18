@@ -32,7 +32,7 @@ class PoolPreset {
 }
 
 const kPoolPresets = <PoolPreset>[
-  PoolPreset('Public Pool (solo)', 'public-pool.io', 21496,
+  PoolPreset('Public Pool (solo)', 'public-pool.io', 3333,
       'Solo sans commission, pense pour les tres petits mineurs. '
       'Difficulte minimale tres basse : le meilleur choix ici.'),
   PoolPreset('CKPool solo', 'solo.ckpool.org', 3333,
@@ -731,8 +731,8 @@ class MinerController extends ChangeNotifier {
     notifyListeners();
   }
 
-  /// Consulte le solde de l'adresse configuree. Lecture seule : aucune cle
-  /// n'existe dans cette application, aucune depense n'est possible.
+  /// Consulte le solde d'une adresse via l'explorateur public. Cette methode
+  /// n'accede jamais au coffre local ni a la phrase de recuperation.
   Future<void> refreshBalance([String? rawAddress]) async {
     final address = (rawAddress ?? wallet).trim();
     final check = checkBitcoinAddress(address);

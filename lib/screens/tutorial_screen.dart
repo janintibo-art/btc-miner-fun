@@ -100,9 +100,12 @@ const _chapters = <_ChapterData>[
   ),
   _ChapterData(
     'Configurer l\'application',
-    'Il te faut une adresse Bitcoin publique, commencant par bc1, 1 ou 3. Elle '
-        'sert uniquement a recevoir : ne saisis jamais de cle privee ni de phrase '
-        'de recuperation dans un logiciel de minage.\n\n'
+    'Il te faut une adresse Bitcoin publique, commencant par bc1, 1 ou 3. Dans '
+        'Reglages > Portefeuille Bitcoin, tu peux creer un coffre local BIP39/BIP84 '
+        'ou utiliser l\'adresse publique d\'un portefeuille externe.\n\n'
+        'La phrase de recuperation ne doit etre saisie que dans l\'ecran du coffre '
+        'lors d\'une restauration, jamais dans les champs du pool ni envoyee a '
+        'quelqu\'un.\n\n'
         'Choisis ensuite un pool dans l\'onglet Reglages. Les pools classiques '
         'imposent une difficulte minimale hors de portee ; ceux prevus pour les '
         'petits appareils descendent assez bas pour que des parts apparaissent.\n\n'
@@ -222,33 +225,29 @@ const _chapters = <_ChapterData>[
   _ChapterData(
     'Ton portefeuille, tes cles',
     'Un portefeuille ne contient pas de bitcoins : il contient les cles qui '
-        'permettent de depenser ceux inscrits sur la chaine. Perdre les cles, '
+        'permettent de controler ceux inscrits sur la chaine. Perdre les cles, '
         'c\'est perdre les fonds, sans recours ni service client.\n\n'
-        'Ces cles derivent toutes d\'une phrase de recuperation de douze ou '
-        'vingt-quatre mots. Elle se note sur papier, une seule fois, et ne se '
-        'saisit jamais ailleurs que dans ton portefeuille.\n\n'
-        'Cette application ne genere volontairement aucune cle : un defaut de '
-        'generation coute la totalite des fonds, contrairement a un defaut de '
-        'minage qui coute quelques parts. L\'assistant portefeuille, dans '
-        'Reglages, te guide vers un logiciel dedie puis verifie reellement ton '
-        'adresse en recalculant son code de controle.',
+        'Le coffre local cree une phrase BIP39 de douze mots sur ton appareil, '
+        'puis derive une adresse Native SegWit BIP84. La phrase est chiffree par '
+        'le stockage securise de la plateforme et n\'est jamais envoyee au pool.\n\n'
+        'Ecris les douze mots sur papier avant de recevoir des fonds. Le chemin '
+        "utilise est m/84'/0'/0'/0/0, afin de pouvoir restaurer la meme adresse "
+        'dans un portefeuille compatible BIP84.',
     Icons.key_rounded,
   ),
   _ChapterData(
-    'Regarder sans pouvoir toucher',
+    'Regarder sans signer',
     'Une adresse Bitcoin est publique par nature : n\'importe qui peut '
         'consulter ce qu\'elle a recu, puisque toutes les transactions sont '
         'inscrites dans une chaine ouverte. C\'est ce que fait l\'onglet '
         "Convertir en interrogeant mempool.space. L'adresse consultee est "
         'donc transmise a cet explorateur via HTTPS.\n\n'
-        'Consulter et depenser sont deux choses totalement separees : la '
-        'premiere ne demande que l\'adresse, la seconde exige la cle privee. '
-        'Cette application n\'a que la premiere, et c\'est un choix : meme si '
-        'ton telephone etait compromis, il n\'y aurait rien a voler ici.\n\n'
-        'Le solde affiche distingue ce qui est inscrit dans un bloc de ce qui '
-        'attend encore une confirmation. Pour depenser, il faudra saisir ta '
-        'phrase de recuperation dans ton portefeuille : le format est '
-        'universel, tous les logiciels serieux la comprennent.',
+        'Le module de solde ne lit jamais la phrase de recuperation. Cette '
+        'version du coffre conserve les cles et sait recevoir, mais ne signe '
+        'volontairement aucune transaction de depense dans le mineur.\n\n'
+        'Pour depenser, restaure les mots dans un portefeuille Bitcoin compatible '
+        'BIP84. Un appareil compromis reste un risque : protege le telephone et '
+        'garde surtout une sauvegarde papier hors ligne.',
     Icons.visibility_rounded,
   ),
   _ChapterData(

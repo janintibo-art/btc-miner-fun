@@ -27,12 +27,11 @@ annulees apres verification, et un defaut supplementaire a ete corrige.
 
 ## Corrections annulees
 
-- **Points d'acces des pools.** La v12 remplacait `public-pool.io:21496` par
-  le port 3333, et `solo.ckpool.org` par `stratum.ckpool.org`. Verification
-  faite : 21496 reste le port publie de Public Pool, et `stratum.ckpool.org`
-  designe le pool *partage* de CKPool, pas le solo. Les valeurs d'origine sont
-  retablies ; CKPool partage est ajoute comme troisieme choix, clairement
-  etiquete.
+- **Points d'acces des pools (historique).** Cette section de la revue v12
+  indiquait initialement le port 21496 pour Public Pool. Au 18 aout 2026,
+  l'interface officielle de Public Pool publie `public-pool.io:3333` : la
+  v14 utilise donc 3333. `stratum.ckpool.org` reste distinct du preset CKPool
+  solo ; le choix partage demeure etiquete separement.
 
 ## Defaut introduit par la v12, corrige ici
 

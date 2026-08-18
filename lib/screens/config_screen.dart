@@ -99,11 +99,11 @@ class _ConfigScreenState extends State<ConfigScreen> {
             },
             leading: const Icon(Icons.account_balance_wallet_rounded,
                 color: AppColors.amber),
-            title: const Text('Assistant portefeuille',
+            title: const Text('Portefeuille Bitcoin',
                 style: TextStyle(fontSize: 14.5, fontWeight: FontWeight.w700)),
             subtitle: Text(
               m.wallet.trim().isEmpty
-                  ? 'Pas encore de portefeuille ? Commence ici.'
+                  ? 'Cree un coffre local ou utilise une adresse externe.'
                   : (m.walletCheck.valid
                       ? m.walletCheck.type
                       : 'Adresse a verifier'),

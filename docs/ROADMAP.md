@@ -88,7 +88,7 @@
   refus du reseau de test et des autres chaines
 - Messages d'erreur explicites plutot qu'un simple "invalide"
 - QR code de l'adresse et copie en un geste
-- Choix assume : l'application ne genere aucune cle privee
+- Mode adresse externe conserve, en plus du coffre local ajoute en etape 11
 
 ## Etape 10 - terminee
 
@@ -96,12 +96,23 @@
 - Distinction entre solde confirme et mouvements en attente
 - Conversion immediate du solde en euros au cours affiche
 - Dernier solde connu conserve pour l'affichage hors ligne
-- Choix assume et documente : aucune cle privee, aucune signature de
-  transaction. Consulter ne demande que l'adresse, depenser exige la cle.
-  Pour depenser, la phrase de recuperation se saisit dans un portefeuille
-  dedie : le format BIP39 est universel.
+- Le module de consultation reste separe du coffre et n'accede jamais aux secrets.
+- Aucune signature de transaction dans le mineur : la depense se fait apres
+  restauration de la phrase dans un portefeuille compatible.
 
-## Etape 11 - a faire
+## Etape 11 - terminee
+
+- Creation locale d'une phrase BIP39 de 12 mots avec `blockchain_utils`
+- Restauration de phrases BIP39 valides (12/15/18/21/24 mots)
+- Derivation Native SegWit BIP84 : `m/84'/0'/0'/0/0`
+- Phrase conservee avec `flutter_secure_storage`, jamais dans SharedPreferences
+- Android : sauvegarde automatique desactivee et captures bloquees pendant
+  l'affichage/saisie de la phrase de recuperation
+- Activation de l'adresse locale directement comme adresse de paiement du pool
+- Suppression explicite du coffre avec avertissement de sauvegarde
+- Test automatique contre le vecteur officiel BIP84
+
+## Etape 12 - a faire
 
 - Lecture de la temperature de la batterie pour brider automatiquement
 - Bouton d'arret directement dans la notification

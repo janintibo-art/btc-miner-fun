@@ -43,7 +43,9 @@ btc-miner-fun/
 │   │   ├── nonce_walker.dart     Strategies d'exploration, marche signature
 │   │   ├── price_service.dart    Cours du bitcoin et etat du reseau
 │   │   ├── address_validator.dart Verification bech32 / bech32m / base58check
-│   │   ├── wallet_watch.dart     Consultation du solde, en lecture seule
+│   │   ├── wallet_watch.dart     Consultation publique du solde
+│   │   ├── wallet_keys.dart      BIP39 + derivation BIP84
+│   │   ├── wallet_vault.dart     Coffre chiffre local
 │   │   ├── benchmark.dart        Mesure comparative des trois moteurs
 │   │   ├── stratum_client.dart   Client Stratum V1 (TCP + JSON-RPC)
 │   │   └── miner_engine.dart     Boucle de hachage dans un isolate
@@ -74,13 +76,16 @@ gestionnaire de fichiers.
 
 ## Etat du projet
 
-Version 0.12.0 : integration d'une revue externe du code (voir
-`docs/REVUE_V12.md`), robustesse du protocole Stratum, validation stricte des
-adresses, service Android en `specialUse`.
+Version 0.14.0 (build 14), basee sur la v13 : portefeuille Bitcoin local non-custodial,
+phrase BIP39 creee/restauree sur l'appareil, premiere adresse Native SegWit BIP84
+(`m/84'/0'/0'/0/0`) et coffre chiffre avec le stockage securise de la plateforme.
 
+Etape 11 terminee : coffre local, sauvegarde des 12 mots, restauration BIP39,
+QR de reception et activation directe de l'adresse comme identifiant de paiement du pool.
+Aucune phrase de portefeuille utilisateur n'est pregeneree dans le depot et aucune n'est envoyee au pool.
 
-Etape 10 terminee : suivi du solde de l'adresse en lecture seule, sans aucune
-cle privee dans l'application.
+Etape 10 terminee : suivi du solde de l'adresse en lecture seule. Ce module
+utilise seulement l'adresse publique et n'accede jamais au coffre.
 
 Etape 9 terminee : assistant portefeuille, verification complete des adresses
 avec recalcul du code de controle, QR code de reception.
@@ -97,7 +102,7 @@ Voir `docs/ROADMAP.md` pour la suite.
 
 La v12 corrige plusieurs cas limites trouves lors d'une revue approfondie :
 
-- presets verifies : `public-pool.io:21496` (solo, sans commission), `solo.ckpool.org:3333` (solo) et `stratum.ckpool.org:3333` (partage) ;
+- presets verifies : `public-pool.io:3333` (solo, sans commission), `solo.ckpool.org:3333` (solo) et `stratum.ckpool.org:3333` (partage) ;
 - arret complet du moteur, wakelock, socket et service Android apres un refus du
   pool ou l'abandon des reconnexions ;
 - application de `mining.set_difficulty` et `mining.set_extranonce` au prochain

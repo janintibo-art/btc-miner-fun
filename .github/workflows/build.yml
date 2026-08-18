@@ -8,7 +8,7 @@ on:
 
 jobs:
   tests:
-    name: Tests du moteur de minage
+    name: Tests moteur et portefeuille
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -21,11 +21,10 @@ jobs:
       - name: Dependances
         run: flutter pub get
 
-      # Informatif : les regles de style ne doivent pas empecher de produire
-      # un APK. Les vraies erreurs seront de toute facon relevees par
-      # flutter test et par la compilation elle-meme.
+      # Depuis l'ajout du portefeuille, une erreur d'analyse bloque le build :
+      # le code qui manipule la phrase de recuperation ne doit pas etre livre
+      # avec une erreur statique ignoree.
       - name: Analyse statique Dart / Flutter
-        continue-on-error: true
         run: flutter analyze --no-fatal-infos
 
       - name: Verifier les calculs sur un vrai bloc Bitcoin
@@ -98,7 +97,9 @@ jobs:
   windows:
     name: Executable Windows
     needs: tests
-    runs-on: windows-latest
+    # flutter_secure_storage requiert les bibliotheques C++ ATL.
+    # L'image Windows 2022 de GitHub Actions les fournit explicitement.
+    runs-on: windows-2022
     defaults:
       run:
         shell: bash

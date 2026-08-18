@@ -4,9 +4,9 @@ import 'price_service.dart';
 
 /// Le solde d'une adresse, en lecture seule.
 ///
-/// L'application n'a aucune cle privee : elle demande simplement a un
-/// explorateur public ce que la chaine dit de ton adresse. C'est de la
-/// consultation, comme regarder un relevé sans pouvoir signer de cheque.
+/// Ce module n'accede jamais aux cles privees : il demande simplement a un
+/// explorateur public ce que la chaine dit d'une adresse. C'est de la
+/// consultation, independante du coffre local.
 class WalletBalance {
   const WalletBalance({
     required this.address,
