@@ -1,0 +1,19 @@
+# Flutter / Dart
+.dart_tool/
+.packages
+build/
+.flutter-plugins
+.flutter-plugins-dependencies
+*.iml
+
+# Dossiers de plateforme regeneres automatiquement par la CI
+/android/
+/ios/
+/windows/
+/linux/
+/macos/
+/web/
+
+# Systeme
+.DS_Store
+Thumbs.db

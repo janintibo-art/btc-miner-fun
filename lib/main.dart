@@ -1,0 +1,125 @@
+import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+
+import 'app_theme.dart';
+import 'screens/about_screen.dart';
+import 'screens/config_screen.dart';
+import 'screens/dashboard_screen.dart';
+import 'screens/tutorial_screen.dart';
+import 'state/miner_controller.dart';
+
+void main() {
+  WidgetsFlutterBinding.ensureInitialized();
+  runApp(const BtcMinerApp());
+}
+
+class BtcMinerApp extends StatelessWidget {
+  const BtcMinerApp({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return ChangeNotifierProvider(
+      create: (_) => MinerController()..init(),
+      child: MaterialApp(
+        title: 'BTC Miner Fun',
+        debugShowCheckedModeBanner: false,
+        theme: buildAppTheme(),
+        home: const RootShell(),
+      ),
+    );
+  }
+}
+
+class RootShell extends StatefulWidget {
+  const RootShell({super.key});
+
+  @override
+  State<RootShell> createState() => _RootShellState();
+}
+
+class _RootShellState extends State<RootShell> {
+  int _index = 0;
+
+  static const _titles = ['Minage', 'Reglages', 'Tutoriel', 'A propos'];
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        backgroundColor: AppColors.night,
+        elevation: 0,
+        titleSpacing: 20,
+        title: Row(
+          children: [
+            Container(
+              width: 26,
+              height: 26,
+              decoration: BoxDecoration(
+                color: AppColors.amber,
+                borderRadius: BorderRadius.circular(8),
+              ),
+              alignment: Alignment.center,
+              child: const Text('B',
+                  style: TextStyle(
+                      color: Colors.black,
+                      fontWeight: FontWeight.w900,
+                      fontSize: 16)),
+            ),
+            const SizedBox(width: 12),
+            Text(_titles[_index],
+                style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w700)),
+          ],
+        ),
+      ),
+      body: SafeArea(
+        child: IndexedStack(
+          index: _index,
+          children: const [
+            DashboardScreen(),
+            ConfigScreen(),
+            TutorialScreen(),
+            AboutScreen(),
+          ],
+        ),
+      ),
+      bottomNavigationBar: Container(
+        decoration: const BoxDecoration(
+          color: AppColors.panel,
+          border: Border(top: BorderSide(color: AppColors.line)),
+        ),
+        child: NavigationBarTheme(
+          data: NavigationBarThemeData(
+            backgroundColor: Colors.transparent,
+            indicatorColor: AppColors.amber.withOpacity(0.18),
+            labelTextStyle: WidgetStateProperty.all(
+              const TextStyle(fontSize: 11, fontWeight: FontWeight.w600),
+            ),
+          ),
+          child: NavigationBar(
+            height: 66,
+            selectedIndex: _index,
+            onDestinationSelected: (i) => setState(() => _index = i),
+            destinations: const [
+              NavigationDestination(
+                  icon: Icon(Icons.bolt_outlined),
+                  selectedIcon: Icon(Icons.bolt_rounded, color: AppColors.amber),
+                  label: 'Minage'),
+              NavigationDestination(
+                  icon: Icon(Icons.tune_outlined),
+                  selectedIcon: Icon(Icons.tune_rounded, color: AppColors.amber),
+                  label: 'Reglages'),
+              NavigationDestination(
+                  icon: Icon(Icons.school_outlined),
+                  selectedIcon: Icon(Icons.school_rounded, color: AppColors.amber),
+                  label: 'Tutoriel'),
+              NavigationDestination(
+                  icon: Icon(Icons.info_outline),
+                  selectedIcon: Icon(Icons.info_rounded, color: AppColors.amber),
+                  label: 'A propos'),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}

@@ -1,0 +1,105 @@
+name: Compilation Android et Windows
+
+on:
+  push:
+    branches: [main]
+    tags: ['v*']
+  workflow_dispatch:
+
+jobs:
+  android:
+    name: APK Android
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+
+      - name: Mettre les sources de cote
+        run: |
+          mkdir -p /tmp/src
+          cp -r lib /tmp/src/lib
+          cp pubspec.yaml /tmp/src/pubspec.yaml
+
+      - name: Generer les dossiers de plateforme
+        run: flutter create --project-name btc_miner_fun --org com.funminer --platforms=android,windows .
+
+      - name: Restaurer les sources
+        run: |
+          rm -rf lib
+          cp -r /tmp/src/lib lib
+          cp /tmp/src/pubspec.yaml pubspec.yaml
+
+      - name: Patcher le manifeste Android
+        run: python3 tool/patch_android.py
+
+      - name: Dependances
+        run: flutter pub get
+
+      - name: Construire l'APK
+        run: flutter build apk --release
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: BTCMinerFun-android-apk
+          path: build/app/outputs/flutter-apk/app-release.apk
+          if-no-files-found: error
+
+  windows:
+    name: Executable Windows
+    runs-on: windows-latest
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+
+      - name: Mettre les sources de cote
+        run: |
+          mkdir -p /tmp/src
+          cp -r lib /tmp/src/lib
+          cp pubspec.yaml /tmp/src/pubspec.yaml
+
+      - name: Generer les dossiers de plateforme
+        run: flutter create --project-name btc_miner_fun --org com.funminer --platforms=android,windows .
+
+      - name: Restaurer les sources
+        run: |
+          rm -rf lib
+          cp -r /tmp/src/lib lib
+          cp /tmp/src/pubspec.yaml pubspec.yaml
+
+      - name: Activer la cible Windows
+        run: flutter config --enable-windows-desktop
+
+      - name: Dependances
+        run: flutter pub get
+
+      - name: Construire l'executable
+        run: flutter build windows --release
+
+      - name: Rassembler les fichiers
+        run: |
+          RELEASE_DIR=$(find build/windows -type d -path "*runner/Release" | head -n 1)
+          echo "Dossier trouve : $RELEASE_DIR"
+          mkdir -p dist
+          cp -r "$RELEASE_DIR"/* dist/
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: BTCMinerFun-windows
+          path: dist/**
+          if-no-files-found: error
