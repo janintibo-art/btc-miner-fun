@@ -1,6 +1,5 @@
 import 'dart:async';
 import 'dart:math';
-import 'dart:typed_data';
 
 import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -10,9 +9,24 @@ import '../core/miner_engine.dart';
 import '../core/stratum_client.dart';
 import '../core/stratum_job.dart';
 
-enum MinerMode { demo, pool }
+enum MinerStatus { stopped, connecting, waitingJob, mining, error }
 
-enum MinerStatus { stopped, connecting, running, error }
+/// Pools connus pour accepter des difficultes tres basses, donc adaptes aux
+/// tres petites machines. Le port est indique par le pool lui-meme.
+class PoolPreset {
+  const PoolPreset(this.name, this.host, this.port, this.note);
+  final String name;
+  final String host;
+  final int port;
+  final String note;
+}
+
+const kPoolPresets = <PoolPreset>[
+  PoolPreset('Public Pool (solo)', 'public-pool.io', 21496,
+      'Pool solo pense pour les petits mineurs. Difficulte tres basse.'),
+  PoolPreset('CKPool solo', 'solo.ckpool.org', 3333,
+      'Solo historique. Difficulte plus elevee, parts beaucoup plus rares.'),
+];
 
 class MinerController extends ChangeNotifier {
   final MinerEngine _engine = MinerEngine();
@@ -20,19 +34,20 @@ class MinerController extends ChangeNotifier {
   StratumClient? _client;
   StratumJob? _job;
   Timer? _ticker;
+  Timer? _reconnectTimer;
 
   String _extranonce1 = '';
   int _extranonce2Size = 4;
   int _extranonce2Counter = 0;
+  bool _wantsMining = false;
+  int _reconnectAttempts = 0;
 
   // ---- Reglages ----
-  MinerMode mode = MinerMode.demo;
-  String poolHost = 'public-pool.io';
-  int poolPort = 21496;
+  String poolHost = kPoolPresets.first.host;
+  int poolPort = kPoolPresets.first.port;
   String wallet = '';
   String workerName = 'telephone';
   String poolPassword = 'x';
-  int demoZeroBits = 20;
 
   // ---- Etat ----
   MinerStatus status = MinerStatus.stopped;
@@ -42,68 +57,68 @@ class MinerController extends ChangeNotifier {
   int totalHashes = 0;
   int accepted = 0;
   int rejected = 0;
-  double poolDifficulty = 1;
+  double poolDifficulty = 0;
+  int jobsReceived = 0;
   DateTime? startedAt;
+  JobSnapshot? job;
   final List<double> history = <double>[];
   final List<String> logs = <String>[];
 
-  bool get isBusy =>
-      status == MinerStatus.running || status == MinerStatus.connecting;
+  bool get isBusy => status != MinerStatus.stopped && status != MinerStatus.error;
+  bool get isActive => _wantsMining;
   Duration get uptime =>
       startedAt == null ? Duration.zero : DateTime.now().difference(startedAt!);
+
+  /// Verification de forme uniquement : longueur et prefixe plausibles.
+  bool get walletLooksValid {
+    final w = wallet.trim();
+    if (w.length < 26 || w.length > 62) return false;
+    return w.startsWith('bc1') || w.startsWith('1') || w.startsWith('3');
+  }
 
   // ---------------------------------------------------------------------------
 
   Future<void> init() async {
     final p = await SharedPreferences.getInstance();
-    mode = (p.getString('mode') ?? 'demo') == 'pool'
-        ? MinerMode.pool
-        : MinerMode.demo;
     poolHost = p.getString('poolHost') ?? poolHost;
     poolPort = p.getInt('poolPort') ?? poolPort;
     wallet = p.getString('wallet') ?? '';
     workerName = p.getString('workerName') ?? workerName;
     poolPassword = p.getString('poolPassword') ?? poolPassword;
-    demoZeroBits = p.getInt('demoZeroBits') ?? demoZeroBits;
 
     _engine.onStats = (hps, total) {
       hashrate = hps;
       totalHashes = total;
+      if (status == MinerStatus.waitingJob && hps > 0) {
+        status = MinerStatus.mining;
+        statusMessage = 'Minage en cours sur $poolHost';
+      }
       notifyListeners();
     };
     _engine.onShare = _onShareFound;
 
-    log('Bienvenue. Le mode demo mine dans le vide, sans reseau.');
-    notifyListeners();
-  }
-
-  void setMode(MinerMode value) {
-    mode = value;
-    notifyListeners();
-  }
-
-  void setDemoZeroBits(int value) {
-    demoZeroBits = value;
+    log(wallet.isEmpty
+        ? 'Renseigne ton adresse Bitcoin dans Reglages pour commencer.'
+        : 'Pret. Appuie sur Lancer le minage.');
     notifyListeners();
   }
 
   Future<void> saveSettings() async {
     final p = await SharedPreferences.getInstance();
-    await p.setString('mode', mode == MinerMode.pool ? 'pool' : 'demo');
     await p.setString('poolHost', poolHost);
     await p.setInt('poolPort', poolPort);
     await p.setString('wallet', wallet);
     await p.setString('workerName', workerName);
     await p.setString('poolPassword', poolPassword);
-    await p.setInt('demoZeroBits', demoZeroBits);
     log('Reglages enregistres.');
     notifyListeners();
   }
 
   void log(String line) {
     final now = DateTime.now();
-    final stamp =
-        '${now.hour.toString().padLeft(2, '0')}:${now.minute.toString().padLeft(2, '0')}:${now.second.toString().padLeft(2, '0')}';
+    final stamp = '${now.hour.toString().padLeft(2, '0')}:'
+        '${now.minute.toString().padLeft(2, '0')}:'
+        '${now.second.toString().padLeft(2, '0')}';
     logs.insert(0, '[$stamp] $line');
     if (logs.length > 200) logs.removeLast();
     notifyListeners();
@@ -112,11 +127,24 @@ class MinerController extends ChangeNotifier {
   // ---------------------------------------------------------------------------
 
   Future<void> start() async {
-    if (isBusy) return;
+    if (_wantsMining) return;
+    if (!walletLooksValid) {
+      status = MinerStatus.error;
+      statusMessage = 'Adresse Bitcoin invalide';
+      log('Verifie ton adresse dans Reglages : elle doit commencer par bc1, 1 ou 3.');
+      notifyListeners();
+      return;
+    }
+
+    _wantsMining = true;
+    _reconnectAttempts = 0;
     accepted = 0;
     rejected = 0;
     totalHashes = 0;
     bestDifficulty = 0;
+    jobsReceived = 0;
+    poolDifficulty = 0;
+    job = null;
     history.clear();
     startedAt = DateTime.now();
 
@@ -128,25 +156,12 @@ class MinerController extends ChangeNotifier {
       notifyListeners();
     });
 
-    if (mode == MinerMode.demo) {
-      status = MinerStatus.running;
-      statusMessage = 'Mode demo en cours';
-      log('Demarrage du mode demo (cible : $demoZeroBits bits a zero).');
-      _pushDemoWork();
-      notifyListeners();
-      return;
-    }
+    await _connect();
+  }
 
-    if (wallet.trim().isEmpty) {
-      status = MinerStatus.error;
-      statusMessage = 'Adresse de portefeuille manquante';
-      log('Ajoute ton adresse Bitcoin dans l\'onglet Reglages.');
-      notifyListeners();
-      return;
-    }
-
+  Future<void> _connect() async {
     status = MinerStatus.connecting;
-    statusMessage = 'Connexion au pool';
+    statusMessage = 'Connexion a $poolHost';
     notifyListeners();
 
     final client = StratumClient();
@@ -155,12 +170,14 @@ class MinerController extends ChangeNotifier {
     client.onSubscribed = (e1, size) {
       _extranonce1 = e1;
       _extranonce2Size = size;
+      _reconnectAttempts = 0;
     };
     client.onAuthorized = (ok) {
       if (ok) {
-        status = MinerStatus.running;
-        statusMessage = 'Connecte a $poolHost';
+        status = MinerStatus.waitingJob;
+        statusMessage = 'En attente d\'un travail du pool';
       } else {
+        _wantsMining = false;
         status = MinerStatus.error;
         statusMessage = 'Refuse par le pool';
       }
@@ -168,11 +185,12 @@ class MinerController extends ChangeNotifier {
     };
     client.onDifficulty = (d) {
       poolDifficulty = d;
-      _pushPoolWork();
+      _pushWork();
     };
-    client.onJob = (job) {
-      _job = job;
-      _pushPoolWork();
+    client.onJob = (j) {
+      _job = j;
+      jobsReceived++;
+      _pushWork();
     };
     client.onSubmitResult = (ok, reason) {
       if (ok) {
@@ -186,11 +204,7 @@ class MinerController extends ChangeNotifier {
     };
     client.onDisconnected = (msg) {
       log(msg);
-      if (isBusy) {
-        status = MinerStatus.error;
-        statusMessage = 'Deconnecte';
-        notifyListeners();
-      }
+      _scheduleReconnect();
     };
 
     try {
@@ -201,14 +215,39 @@ class MinerController extends ChangeNotifier {
         password: poolPassword,
       );
     } catch (e) {
-      status = MinerStatus.error;
-      statusMessage = 'Connexion impossible';
       log('Connexion impossible : $e');
-      notifyListeners();
+      _scheduleReconnect();
     }
   }
 
+  void _scheduleReconnect() {
+    if (!_wantsMining) return;
+    _engine.pause();
+    _reconnectTimer?.cancel();
+    _reconnectAttempts++;
+    if (_reconnectAttempts > 6) {
+      _wantsMining = false;
+      status = MinerStatus.error;
+      statusMessage = 'Pool injoignable';
+      log('Abandon apres 6 tentatives. Verifie ta connexion ou le serveur du pool.');
+      notifyListeners();
+      return;
+    }
+    final delay = Duration(seconds: 3 * _reconnectAttempts);
+    status = MinerStatus.connecting;
+    statusMessage = 'Reconnexion dans ${delay.inSeconds} s';
+    log('Nouvelle tentative dans ${delay.inSeconds} secondes '
+        '($_reconnectAttempts/6).');
+    notifyListeners();
+    _reconnectTimer = Timer(delay, () {
+      if (_wantsMining) _connect();
+    });
+  }
+
   Future<void> stop() async {
+    _wantsMining = false;
+    _reconnectTimer?.cancel();
+    _reconnectTimer = null;
     _ticker?.cancel();
     _ticker = null;
     await _client?.disconnect();
@@ -218,65 +257,74 @@ class MinerController extends ChangeNotifier {
     statusMessage = 'A l\'arret';
     hashrate = 0;
     startedAt = null;
+    job = null;
     log('Minage arrete.');
     notifyListeners();
   }
 
-  Future<void> toggle() => isBusy ? stop() : start();
+  Future<void> toggle() => _wantsMining ? stop() : start();
 
   // ---------------------------------------------------------------------------
 
-  void _pushPoolWork() {
-    final job = _job;
-    if (job == null || _extranonce1.isEmpty) return;
+  void _pushWork() {
+    final j = _job;
+    if (j == null || _extranonce1.isEmpty || poolDifficulty <= 0) return;
+
     _extranonce2Counter = (_extranonce2Counter + 1) & 0x7fffffff;
     final en2 = _extranonce2Counter
         .toRadixString(16)
         .padLeft(_extranonce2Size * 2, '0');
-    final header = job.buildHeader(_extranonce1, en2);
-    _engine.setWork(WorkPackage(
-      jobId: job.jobId,
-      header: header,
-      target: targetFromDifficulty(poolDifficulty),
+    final root = j.merkleRootFor(_extranonce1, en2);
+    final header = j.headerFor(root);
+    final target = targetFromDifficulty(poolDifficulty);
+
+    job = JobSnapshot(
+      jobId: j.jobId,
+      prevHash: j.prevHash,
+      merkleRoot: bytesToHex(root),
+      version: j.version,
+      nBits: j.nBits,
+      nTime: j.nTime,
+      extranonce1: _extranonce1,
       extranonce2: en2,
-      nTime: job.nTime,
+      targetHex: bytesToHex(target),
+      difficulty: poolDifficulty,
+      transactionsCount: j.merkleBranch.length,
+      receivedAt: DateTime.now(),
+    );
+
+    _engine.setWork(WorkPackage(
+      jobId: j.jobId,
+      header: header,
+      target: target,
+      extranonce2: en2,
+      nTime: j.nTime,
       startNonce: _random.nextInt(0x7fffffff),
     ));
-  }
 
-  void _pushDemoWork() {
-    final header = Uint8List(80);
-    for (var i = 0; i < 76; i++) {
-      header[i] = _random.nextInt(256);
+    if (status == MinerStatus.waitingJob) {
+      status = MinerStatus.mining;
+      statusMessage = 'Minage en cours sur $poolHost';
     }
-    _engine.setWork(WorkPackage(
-      jobId: 'demo-${DateTime.now().millisecondsSinceEpoch}',
-      header: header,
-      target: targetFromLeadingZeroBits(demoZeroBits),
-      extranonce2: '00000000',
-      nTime: '00000000',
-      startNonce: 0,
-    ));
+    notifyListeners();
   }
 
   void _onShareFound(FoundShare share) {
-    if (share.difficulty > bestDifficulty) bestDifficulty = share.difficulty;
-
-    if (mode == MinerMode.demo) {
-      accepted++;
-      log('Solution demo trouvee : ${share.hashHex.substring(0, 24)}...');
-      _pushDemoWork();
-      notifyListeners();
-      return;
+    if (share.difficulty > bestDifficulty) {
+      bestDifficulty = share.difficulty;
     }
-
-    log('Part trouvee (difficulte ${share.difficulty.toStringAsFixed(3)}), envoi au pool.');
-    _client?.submit(worker: '${wallet.trim()}.${workerName.trim()}', share: share);
+    log('Solution trouvee (difficulte ${share.difficulty.toStringAsFixed(3)}), '
+        'envoi au pool.');
+    _client?.submit(
+      worker: '${wallet.trim()}.${workerName.trim()}',
+      share: share,
+    );
   }
 
   @override
   void dispose() {
     _ticker?.cancel();
+    _reconnectTimer?.cancel();
     _client?.disconnect();
     _engine.stop();
     super.dispose();

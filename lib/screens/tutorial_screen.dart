@@ -19,11 +19,10 @@ class TutorialScreen extends StatelessWidget {
               Text('A LIRE EN PREMIER', style: label()),
               const SizedBox(height: 10),
               const Text(
-                'Cette application sert a comprendre le minage, pas a gagner de l\'argent. '
-                'Un telephone produit quelques centaines de milliers de hachages par seconde ; '
-                'le reseau Bitcoin en produit des centaines de milliards de milliards. '
-                'La probabilite de trouver un bloc est si faible qu\'il faudrait, en moyenne, '
-                'des milliards d\'annees.',
+                'Cette application se connecte a un vrai pool et effectue le vrai '
+                'travail de minage. Elle ne te rendra pas riche : un telephone '
+                'represente une part infime du reseau. Elle sert a voir, avec de '
+                'vraies donnees, comment Bitcoin fonctionne reellement.',
                 style: TextStyle(height: 1.55, fontSize: 14),
               ),
             ],
@@ -47,55 +46,83 @@ class _ChapterData {
 const _chapters = <_ChapterData>[
   _ChapterData(
     'Le minage en une minute',
-    'Miner, c\'est chercher un nombre (le "nonce") qui, ajoute a l\'en-tete du bloc, '
-        'donne un resultat de double SHA-256 inferieur a une cible. Il n\'existe aucune '
-        'astuce : on essaie des milliards de combinaisons au hasard.\n\n'
-        'Le premier mineur du monde a trouver la bonne combinaison publie le bloc et '
-        'recoit la recompense. Tous les autres recommencent a zero sur le bloc suivant.',
+    'Un bloc Bitcoin commence par un en-tete de 80 octets : la version, le hash '
+        'du bloc precedent, la racine de Merkle des transactions, l\'heure, la '
+        'difficulte du reseau, et un nombre libre de 4 octets appele nonce.\n\n'
+        'Miner, c\'est passer cet en-tete dans un double SHA-256 en changeant le '
+        'nonce, encore et encore, jusqu\'a obtenir un resultat inferieur a une '
+        'cible. Il n\'existe aucune astuce mathematique : c\'est de la force brute.\n\n'
+        'L\'onglet Minage affiche cet en-tete en direct, champ par champ, pendant '
+        'que l\'application le hache.',
     Icons.memory_rounded,
   ),
   _ChapterData(
-    'Pourquoi un telephone ne gagnera pas',
-    'Une machine dediee (ASIC) calcule environ 200 000 milliards de hachages par seconde. '
-        'Un telephone en calcule quelques centaines de milliers, soit un milliard de fois moins.\n\n'
-        'Concretement : le telephone fait bien le meme travail, simplement il en fait une '
-        'part infime. C\'est exactement pour cela que le mode demo existe : il abaisse la '
-        'cible pour que tu vois des solutions apparaitre en quelques secondes et que tu '
-        'comprennes le mecanisme.',
-    Icons.speed_rounded,
-  ),
-  _ChapterData(
-    'Etape 1 : un portefeuille',
-    'Il te faut une adresse Bitcoin publique (elle commence par bc1, 1 ou 3). Elle sert '
-        'uniquement a recevoir. Tu peux en creer une avec une application de portefeuille '
-        'reconnue.\n\n'
-        'Regle absolue : on ne saisit jamais de cle privee ni de phrase de recuperation '
-        'dans un logiciel de minage. Cette application ne demande que l\'adresse publique.',
-    Icons.account_balance_wallet_rounded,
-  ),
-  _ChapterData(
-    'Etape 2 : choisir un pool',
-    'Un pool regroupe des mineurs et distribue le travail. Les pools classiques imposent '
-        'une difficulte minimale trop elevee pour un telephone.\n\n'
-        'Les pools de type "solo" pour petits appareils (par exemple ceux utilises par les '
-        'mineurs Bitaxe) acceptent des difficultes tres basses : ce sont les seuls ou tu '
-        'verras peut-etre des parts acceptees. Renseigne le serveur et le port dans '
-        'l\'onglet Reglages.',
+    'Ce que fait le pool',
+    'Seul, tu devrais telecharger la chaine entiere et construire toi-meme les '
+        'blocs. Le pool fait ce travail et t\'envoie un resume par le protocole '
+        'Stratum : c\'est le message mining.notify que tu vois passer dans le '
+        'journal.\n\n'
+        'Il te donne aussi un extranonce, ton espace de recherche personnel, pour '
+        'que deux mineurs ne testent jamais les memes combinaisons. Puis il fixe '
+        'une difficulte reduite : chaque solution atteignant ce niveau compte '
+        'comme une "part", la preuve que tu travailles vraiment.',
     Icons.hub_rounded,
   ),
   _ChapterData(
-    'Etape 3 : lancer et lire les compteurs',
-    'Puissance de calcul : le nombre de hachages par seconde.\n'
-        'Parts acceptees : les solutions validees par le pool.\n'
-        'Meilleure difficulte : la meilleure solution trouvee depuis le demarrage. '
-        'C\'est le vrai indicateur de progression quand les parts sont rares.\n\n'
-        'Le journal en bas affiche tous les echanges avec le pool, ligne par ligne.',
+    'Parts, difficulte, et ce qu\'il faut regarder',
+    'Parts acceptees : les solutions validees par le pool. Sur un telephone, '
+        'elles arrivent rarement, parfois jamais selon le pool choisi.\n\n'
+        'Meilleure difficulte : la meilleure solution trouvee depuis le '
+        'demarrage. C\'est le seul compteur qui bouge vraiment, et donc le plus '
+        'interessant a suivre. Une valeur de 5000 signifie que ton hash etait '
+        '5000 fois meilleur que la difficulte 1.\n\n'
+        'Pour trouver un bloc, il faudrait atteindre la difficulte du reseau, '
+        'qui se compte en dizaines de milliers de milliards.',
     Icons.insights_rounded,
   ),
   _ChapterData(
-    'Etape 4 : compiler l\'APK et le .exe',
-    'Le projet est compile par GitHub Actions, pas par ton telephone. A chaque envoi de '
-        'code sur la branche main, GitHub construit automatiquement :\n\n'
+    'La verite sur les chances',
+    'Une machine dediee (ASIC) calcule environ 200 000 milliards de hachages par '
+        'seconde. Un telephone en calcule quelques centaines de milliers : un '
+        'rapport de l\'ordre du milliard.\n\n'
+        'Le reseau entier produit des centaines de milliards de milliards de '
+        'hachages par seconde. La part d\'un telephone est si infime que '
+        'l\'attente moyenne avant de trouver un bloc se compte en milliards '
+        'd\'annees.\n\n'
+        'Le travail effectue est pourtant exactement le meme que celui d\'une '
+        'ferme de minage. C\'est ce qui rend l\'exercice interessant : tu vois '
+        'le vrai protocole, avec de vraies donnees.',
+    Icons.speed_rounded,
+  ),
+  _ChapterData(
+    'Configurer l\'application',
+    'Il te faut une adresse Bitcoin publique, commencant par bc1, 1 ou 3. Elle '
+        'sert uniquement a recevoir : ne saisis jamais de cle privee ni de phrase '
+        'de recuperation dans un logiciel de minage.\n\n'
+        'Choisis ensuite un pool dans l\'onglet Reglages. Les pools classiques '
+        'imposent une difficulte minimale hors de portee ; ceux prevus pour les '
+        'petits appareils descendent assez bas pour que des parts apparaissent.\n\n'
+        'Le nom du worker te permet de reconnaitre cet appareil sur le tableau '
+        'de bord du pool.',
+    Icons.tune_rounded,
+  ),
+  _ChapterData(
+    'Lire le journal',
+    'Chaque ligne correspond a un echange reel avec le pool :\n\n'
+        'Abonne au pool : le pool a accepte la connexion et donne ton extranonce.\n'
+        'Worker autorise : ton adresse est reconnue.\n'
+        'Difficulte du pool : le niveau exige pour une part.\n'
+        'Nouveau job : un nouveau bloc a miner, souvent apres qu\'un bloc vient '
+        'd\'etre trouve quelque part dans le monde.\n'
+        'Solution trouvee puis Part acceptee : ton hachage a paye.\n\n'
+        'Si la connexion tombe, l\'application se reconnecte seule, avec un delai '
+        'qui augmente a chaque tentative.',
+    Icons.terminal_rounded,
+  ),
+  _ChapterData(
+    'Compiler l\'APK et le .exe',
+    'Le projet est compile par GitHub Actions, pas par ton telephone. A chaque '
+        'envoi de code sur la branche main, GitHub construit :\n\n'
         '- BTCMinerFun-android-apk : le fichier a installer sur Android\n'
         '- BTCMinerFun-windows : le dossier contenant le .exe et ses bibliotheques\n\n'
         'Tu les recuperes dans l\'onglet Actions du depot, section Artifacts.',
@@ -103,11 +130,11 @@ const _chapters = <_ChapterData>[
   ),
   _ChapterData(
     'Chaleur, batterie, honnetete',
-    'Le minage fait tourner le processeur a fond : le telephone chauffe et la batterie '
-        'se vide vite. Evite de miner en charge prolongee, et arrete des que l\'appareil '
-        'devient chaud.\n\n'
-        'Ne fais jamais tourner un mineur sur un appareil qui ne t\'appartient pas : sans '
-        'accord explicite du proprietaire, c\'est illegal.',
+    'Le minage fait tourner le processeur a fond : le telephone chauffe et la '
+        'batterie se vide vite. Evite de miner longtemps en charge, et arrete des '
+        'que l\'appareil devient chaud.\n\n'
+        'Ne fais jamais tourner un mineur sur un appareil qui ne t\'appartient '
+        'pas : sans accord explicite du proprietaire, c\'est illegal.',
     Icons.thermostat_rounded,
   ),
 ];

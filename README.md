@@ -8,11 +8,13 @@ Interface soignee, onglet tutoriel integre, mode demo hors ligne et mode pool re
 
 ## Ce que fait l'application
 
-- **Mode demo** : mine dans le vide avec une cible facile, pour voir le mecanisme en action.
-- **Mode pool** : se connecte a un vrai pool Bitcoin (subscribe / authorize / notify / submit).
+- **Minage reel** : connexion Stratum V1 a un vrai pool (subscribe / authorize / notify / submit).
+- **Inspecteur de bloc** : l'en-tete sur lequel tu travailles, champ par champ, avec
+  l'explication de chaque valeur. Rien n'est simule.
 - Double SHA-256 dans un *isolate* separe : l'interface ne gele jamais.
-- Tableau de bord : puissance de calcul, courbe 60 s, parts acceptees, meilleure difficulte, journal.
-- Onglet tutoriel en 7 chapitres.
+- Reconnexion automatique au pool, avec delai croissant.
+- Tableau de bord : puissance de calcul, courbe 60 s, parts, meilleure difficulte, journal.
+- Onglet tutoriel en 8 chapitres.
 
 ## Structure du depot
 
@@ -30,7 +32,7 @@ btc-miner-fun/
 │   │   └── miner_engine.dart     Boucle de hachage dans un isolate
 │   ├── state/miner_controller.dart
 │   ├── screens/                  Minage, Reglages, Tutoriel, A propos
-│   └── widgets/                  Carte, courbe, console
+│   └── widgets/                  Carte, courbe, console, inspecteur
 ├── docs/TERMUX.md                Toutes les commandes, une par une
 ├── docs/ROADMAP.md               Les etapes suivantes
 ├── pubspec.yaml
@@ -53,5 +55,6 @@ gestionnaire de fichiers.
 
 ## Etat du projet
 
-Etape 1 terminee : architecture, interface, moteur de hachage, client Stratum, CI.
+Etape 2 terminee : minage reel uniquement, inspecteur de bloc explique,
+reconnexion automatique, presets de pools.
 Voir `docs/ROADMAP.md` pour la suite.

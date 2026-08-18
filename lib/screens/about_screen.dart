@@ -22,8 +22,9 @@ class AboutScreen extends StatelessWidget {
                   style: mono(size: 12, color: AppColors.muted)),
               const SizedBox(height: 16),
               const Text(
-                'Un mineur Bitcoin pedagogique, ecrit en Flutter, qui tourne sur '
-                'Android et sur Windows a partir du meme code source.',
+                'Un mineur Bitcoin reel et pedagogique, ecrit en Flutter, qui tourne '
+                'sur Android et sur Windows a partir du meme code source. Chaque '
+                'donnee affichee vient du pool, rien n\'est simule.',
                 style: TextStyle(height: 1.55, fontSize: 13.5),
               ),
             ],
@@ -33,6 +34,7 @@ class AboutScreen extends StatelessWidget {
         const SectionLabel('Sous le capot'),
         const _Fact('Hachage', 'Double SHA-256, dans un isolate separe'),
         const _Fact('Protocole', 'Stratum V1 (subscribe, authorize, notify, submit)'),
+        const _Fact('Inspecteur', 'En-tete de bloc affiche en direct, champ par champ'),
         const _Fact('Interface', 'Flutter, Material 3, theme sur mesure'),
         const _Fact('Compilation', 'GitHub Actions : APK Android + .exe Windows'),
         const SizedBox(height: 16),

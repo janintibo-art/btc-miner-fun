@@ -40,21 +40,55 @@ class StratumJob {
     );
   }
 
-  /// Construit l'en-tete de bloc de 80 octets (nonce a zero, il sera ecrit
-  /// par le moteur de minage a chaque tentative).
-  Uint8List buildHeader(String extranonce1, String extranonce2) {
+  /// Racine de Merkle : la coinbase que nous fabriquons, puis les branches
+  /// fournies par le pool. Elle resume toutes les transactions du bloc.
+  Uint8List merkleRootFor(String extranonce1, String extranonce2) {
     final coinbase = hexToBytes(coinb1 + extranonce1 + extranonce2 + coinb2);
-    final root = merkleRootFromBranch(sha256d(coinbase), merkleBranch);
+    return merkleRootFromBranch(sha256d(coinbase), merkleBranch);
+  }
 
+  /// En-tete de bloc de 80 octets. Le nonce (4 derniers octets) reste a zero :
+  /// c'est le moteur de hachage qui l'incrementera des milliards de fois.
+  Uint8List headerFor(Uint8List merkleRoot) {
     final header = Uint8List(80);
     header.setRange(0, 4, reverseBytes(hexToBytes(version)));
     header.setRange(4, 36, swapEndianWords(hexToBytes(prevHash)));
-    header.setRange(36, 68, root);
+    header.setRange(36, 68, merkleRoot);
     header.setRange(68, 72, reverseBytes(hexToBytes(nTime)));
     header.setRange(72, 76, reverseBytes(hexToBytes(nBits)));
-    // 76..80 = nonce, laisse a zero.
     return header;
   }
+}
+
+/// Photographie du travail en cours, affichee dans l'inspecteur.
+class JobSnapshot {
+  JobSnapshot({
+    required this.jobId,
+    required this.prevHash,
+    required this.merkleRoot,
+    required this.version,
+    required this.nBits,
+    required this.nTime,
+    required this.extranonce1,
+    required this.extranonce2,
+    required this.targetHex,
+    required this.difficulty,
+    required this.transactionsCount,
+    required this.receivedAt,
+  });
+
+  final String jobId;
+  final String prevHash;
+  final String merkleRoot;
+  final String version;
+  final String nBits;
+  final String nTime;
+  final String extranonce1;
+  final String extranonce2;
+  final String targetHex;
+  final double difficulty;
+  final int transactionsCount;
+  final DateTime receivedAt;
 }
 
 /// Une unite de travail prete a etre envoyee au moteur de hachage.

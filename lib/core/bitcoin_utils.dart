@@ -77,22 +77,6 @@ Uint8List targetFromDifficulty(double difficulty) {
   return bigIntTo32Bytes(target);
 }
 
-/// Cible "facile" definie par un nombre de bits a zero (utile en mode demo).
-Uint8List targetFromLeadingZeroBits(int bits) {
-  final t = Uint8List(32);
-  for (var i = 0; i < 32; i++) {
-    final start = i * 8;
-    if (start + 8 <= bits) {
-      t[i] = 0x00;
-    } else if (start >= bits) {
-      t[i] = 0xff;
-    } else {
-      t[i] = 0xff >> (bits - start);
-    }
-  }
-  return t;
-}
-
 Uint8List bigIntTo32Bytes(BigInt value) {
   final out = Uint8List(32);
   var v = value;

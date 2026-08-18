@@ -5,6 +5,7 @@ import '../app_theme.dart';
 import '../core/bitcoin_utils.dart';
 import '../state/miner_controller.dart';
 import '../widgets/app_card.dart';
+import '../widgets/job_inspector.dart';
 import '../widgets/log_console.dart';
 import '../widgets/sparkline.dart';
 
@@ -27,6 +28,9 @@ class DashboardScreen extends StatelessWidget {
         const SectionLabel('Compteurs'),
         _StatsGrid(m: m),
         const SizedBox(height: 22),
+        const SectionLabel('Le bloc sur lequel tu travailles'),
+        JobInspector(job: m.job),
+        const SizedBox(height: 22),
         const SectionLabel('Journal'),
         LogConsole(lines: m.logs),
       ],
@@ -41,8 +45,8 @@ class _StatusLine extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final color = switch (m.status) {
-      MinerStatus.running => AppColors.mint,
-      MinerStatus.connecting => AppColors.amber,
+      MinerStatus.mining => AppColors.mint,
+      MinerStatus.connecting || MinerStatus.waitingJob => AppColors.amber,
       MinerStatus.error => AppColors.coral,
       MinerStatus.stopped => AppColors.muted,
     };
@@ -56,10 +60,6 @@ class _StatusLine extends StatelessWidget {
         const SizedBox(width: 10),
         Expanded(
           child: Text(m.statusMessage, style: mono(size: 13, color: color)),
-        ),
-        Text(
-          m.mode == MinerMode.demo ? 'DEMO' : 'POOL',
-          style: label(),
         ),
       ],
     );
@@ -105,7 +105,7 @@ class _StartButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final running = m.isBusy;
+    final running = m.isActive;
     return SizedBox(
       height: 62,
       child: FilledButton.icon(
@@ -142,8 +142,8 @@ class _StatsGrid extends StatelessWidget {
         'Meilleure difficulte',
         m.bestDifficulty == 0 ? '-' : m.bestDifficulty.toStringAsFixed(3)
       ],
-      ['Difficulte du pool', m.poolDifficulty.toStringAsFixed(3)],
-      ['Cible demo', '${m.demoZeroBits} bits'],
+      ['Difficulte du pool', m.poolDifficulty == 0 ? '-' : m.poolDifficulty.toStringAsFixed(3)],
+      ['Travaux recus', m.jobsReceived.toString()],
     ];
 
     return GridView.builder(

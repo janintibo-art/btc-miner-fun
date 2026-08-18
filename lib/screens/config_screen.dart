@@ -13,22 +13,12 @@ class ConfigScreen extends StatefulWidget {
 }
 
 class _ConfigScreenState extends State<ConfigScreen> {
-  late final TextEditingController _wallet;
-  late final TextEditingController _worker;
-  late final TextEditingController _host;
-  late final TextEditingController _port;
-  late final TextEditingController _password;
+  final _wallet = TextEditingController();
+  final _worker = TextEditingController();
+  final _host = TextEditingController();
+  final _port = TextEditingController();
+  final _password = TextEditingController();
   bool _loaded = false;
-
-  @override
-  void initState() {
-    super.initState();
-    _wallet = TextEditingController();
-    _worker = TextEditingController();
-    _host = TextEditingController();
-    _port = TextEditingController();
-    _password = TextEditingController();
-  }
 
   @override
   void dispose() {
@@ -50,138 +40,171 @@ class _ConfigScreenState extends State<ConfigScreen> {
     _loaded = true;
   }
 
+  void _applyPreset(PoolPreset p) {
+    setState(() {
+      _host.text = p.host;
+      _port.text = p.port.toString();
+    });
+  }
+
+  void _save(MinerController m) {
+    m.wallet = _wallet.text.trim();
+    m.workerName =
+        _worker.text.trim().isEmpty ? 'telephone' : _worker.text.trim();
+    m.poolHost = _host.text.trim();
+    m.poolPort = int.tryParse(_port.text.trim()) ?? m.poolPort;
+    m.poolPassword =
+        _password.text.trim().isEmpty ? 'x' : _password.text.trim();
+    m.saveSettings();
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(m.walletLooksValid
+            ? 'Reglages enregistres'
+            : 'Enregistre, mais l\'adresse ne ressemble pas a une adresse Bitcoin'),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final m = context.watch<MinerController>();
     _sync(m);
-    final locked = m.isBusy;
+    final locked = m.isActive;
 
     return ListView(
       padding: const EdgeInsets.fromLTRB(16, 8, 16, 32),
       children: [
-        const SectionLabel('Mode de fonctionnement'),
+        const SectionLabel('Ou vont les gains'),
         AppCard(
           child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              _ModeTile(
-                title: 'Demo hors ligne',
-                subtitle:
-                    'Aucune connexion. L\'application cherche des solutions faciles pour montrer comment fonctionne le minage.',
-                selected: m.mode == MinerMode.demo,
-                onTap: locked ? null : () => m.setMode(MinerMode.demo),
+              TextField(
+                controller: _wallet,
+                enabled: !locked,
+                style: mono(size: 13),
+                onChanged: (_) => setState(() {}),
+                decoration: const InputDecoration(
+                  labelText: 'Adresse Bitcoin',
+                  helperText: 'Adresse publique uniquement. Jamais de cle privee '
+                      'ni de phrase de recuperation.',
+                  helperMaxLines: 3,
+                ),
               ),
-              const Divider(height: 24),
-              _ModeTile(
-                title: 'Pool reel (Stratum)',
-                subtitle:
-                    'Connexion a un vrai pool Bitcoin avec ton adresse de portefeuille.',
-                selected: m.mode == MinerMode.pool,
-                onTap: locked ? null : () => m.setMode(MinerMode.pool),
+              const SizedBox(height: 14),
+              TextField(
+                controller: _worker,
+                enabled: !locked,
+                decoration: const InputDecoration(
+                  labelText: 'Nom du worker',
+                  helperText: 'Sert a reconnaitre cet appareil sur le tableau '
+                      'de bord du pool.',
+                  helperMaxLines: 2,
+                ),
               ),
             ],
           ),
         ),
         const SizedBox(height: 18),
-        if (m.mode == MinerMode.pool) ...[
-          const SectionLabel('Pool et portefeuille'),
-          AppCard(
-            child: Column(
-              children: [
-                TextField(
-                  controller: _wallet,
-                  enabled: !locked,
-                  style: mono(size: 13),
-                  decoration: const InputDecoration(
-                    labelText: 'Adresse Bitcoin (reception des gains)',
-                    helperText: 'Uniquement une adresse publique. Jamais de cle privee.',
-                    helperMaxLines: 2,
-                  ),
-                ),
-                const SizedBox(height: 14),
-                TextField(
-                  controller: _worker,
-                  enabled: !locked,
-                  decoration: const InputDecoration(labelText: 'Nom du worker'),
-                ),
-                const SizedBox(height: 14),
-                Row(
+        const SectionLabel('Pool'),
+        ...kPoolPresets.map(
+          (p) => Padding(
+            padding: const EdgeInsets.only(bottom: 10),
+            child: AppCard(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+              accent: _host.text == p.host
+                  ? AppColors.amber.withOpacity(0.5)
+                  : null,
+              child: InkWell(
+                onTap: locked ? null : () => _applyPreset(p),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Expanded(
-                      flex: 3,
-                      child: TextField(
-                        controller: _host,
-                        enabled: !locked,
-                        decoration: const InputDecoration(labelText: 'Serveur du pool'),
-                      ),
+                    Icon(
+                      _host.text == p.host
+                          ? Icons.radio_button_checked
+                          : Icons.radio_button_off,
+                      size: 21,
+                      color: _host.text == p.host
+                          ? AppColors.amber
+                          : AppColors.muted,
                     ),
-                    const SizedBox(width: 12),
+                    const SizedBox(width: 14),
                     Expanded(
-                      child: TextField(
-                        controller: _port,
-                        enabled: !locked,
-                        keyboardType: TextInputType.number,
-                        decoration: const InputDecoration(labelText: 'Port'),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(p.name,
+                              style: const TextStyle(
+                                  fontSize: 14.5, fontWeight: FontWeight.w700)),
+                          const SizedBox(height: 3),
+                          Text('${p.host}:${p.port}',
+                              style: mono(size: 11.5, color: AppColors.amber)),
+                          const SizedBox(height: 6),
+                          Text(p.note,
+                              style: const TextStyle(
+                                  fontSize: 12,
+                                  height: 1.45,
+                                  color: AppColors.muted)),
+                        ],
                       ),
                     ),
                   ],
                 ),
-                const SizedBox(height: 14),
-                TextField(
-                  controller: _password,
-                  enabled: !locked,
-                  decoration: const InputDecoration(labelText: 'Mot de passe du pool'),
-                ),
-              ],
+              ),
             ),
           ),
-        ] else ...[
-          const SectionLabel('Difficulte de la demo'),
-          AppCard(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text('${m.demoZeroBits} bits a zero demandes',
-                    style: mono(size: 16, weight: FontWeight.w700)),
-                Text(
-                  'Environ ${_expectedHashes(m.demoZeroBits)} hachages par solution.',
-                  style: mono(size: 12, color: AppColors.muted),
+        ),
+        const SizedBox(height: 8),
+        const SectionLabel('Serveur (modifiable)'),
+        AppCard(
+          child: Column(
+            children: [
+              Row(
+                children: [
+                  Expanded(
+                    flex: 3,
+                    child: TextField(
+                      controller: _host,
+                      enabled: !locked,
+                      style: mono(size: 13),
+                      onChanged: (_) => setState(() {}),
+                      decoration: const InputDecoration(labelText: 'Serveur'),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: TextField(
+                      controller: _port,
+                      enabled: !locked,
+                      style: mono(size: 13),
+                      keyboardType: TextInputType.number,
+                      decoration: const InputDecoration(labelText: 'Port'),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 14),
+              TextField(
+                controller: _password,
+                enabled: !locked,
+                decoration: const InputDecoration(
+                  labelText: 'Mot de passe du pool',
+                  helperText: 'La plupart des pools acceptent simplement x.',
                 ),
-                Slider(
-                  value: m.demoZeroBits.toDouble(),
-                  min: 14,
-                  max: 30,
-                  divisions: 16,
-                  activeColor: AppColors.amber,
-                  onChanged: locked
-                      ? null
-                      : (v) => m.setDemoZeroBits(v.round()),
-                ),
-              ],
-            ),
+              ),
+            ],
           ),
-        ],
+        ),
         const SizedBox(height: 20),
         FilledButton(
-          onPressed: locked
-              ? null
-              : () {
-                  m.wallet = _wallet.text.trim();
-                  m.workerName =
-                      _worker.text.trim().isEmpty ? 'telephone' : _worker.text.trim();
-                  m.poolHost = _host.text.trim();
-                  m.poolPort = int.tryParse(_port.text.trim()) ?? m.poolPort;
-                  m.poolPassword =
-                      _password.text.trim().isEmpty ? 'x' : _password.text.trim();
-                  m.saveSettings();
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('Reglages enregistres')),
-                  );
-                },
+          onPressed: locked ? null : () => _save(m),
           style: FilledButton.styleFrom(
             backgroundColor: AppColors.amber,
             foregroundColor: Colors.black,
             minimumSize: const Size.fromHeight(54),
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+            shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(16)),
           ),
           child: const Text('Enregistrer les reglages',
               style: TextStyle(fontWeight: FontWeight.w700, fontSize: 15)),
@@ -189,69 +212,10 @@ class _ConfigScreenState extends State<ConfigScreen> {
         if (locked)
           Padding(
             padding: const EdgeInsets.only(top: 12),
-            child: Text(
-              'Arrete le minage pour modifier les reglages.',
-              style: mono(size: 12, color: AppColors.muted),
-            ),
+            child: Text('Arrete le minage pour modifier les reglages.',
+                style: mono(size: 12, color: AppColors.muted)),
           ),
       ],
-    );
-  }
-
-  String _expectedHashes(int bits) {
-    final v = 1 << bits;
-    if (v >= 1000000) return '${(v / 1000000).toStringAsFixed(1)} millions de';
-    if (v >= 1000) return '${(v / 1000).toStringAsFixed(0)} mille';
-    return '$v';
-  }
-}
-
-class _ModeTile extends StatelessWidget {
-  const _ModeTile({
-    required this.title,
-    required this.subtitle,
-    required this.selected,
-    required this.onTap,
-  });
-
-  final String title;
-  final String subtitle;
-  final bool selected;
-  final VoidCallback? onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(12),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Icon(
-            selected ? Icons.radio_button_checked : Icons.radio_button_off,
-            color: selected ? AppColors.amber : AppColors.muted,
-            size: 22,
-          ),
-          const SizedBox(width: 14),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(title,
-                    style: TextStyle(
-                      fontWeight: FontWeight.w700,
-                      fontSize: 15,
-                      color: selected ? AppColors.ink : AppColors.muted,
-                    )),
-                const SizedBox(height: 4),
-                Text(subtitle,
-                    style: const TextStyle(
-                        fontSize: 12.5, color: AppColors.muted, height: 1.4)),
-              ],
-            ),
-          ),
-        ],
-      ),
     );
   }
 }
