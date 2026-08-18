@@ -3,6 +3,8 @@ import 'dart:isolate';
 import 'dart:typed_data';
 
 import 'bitcoin_utils.dart';
+import 'hash_mode.dart';
+import 'sha256_fast.dart';
 import 'stratum_job.dart';
 
 /// Le moteur repartit le travail sur plusieurs isolates : un par coeur
@@ -17,6 +19,7 @@ class MinerEngine {
   Completer<void>? _ready;
   int _workerCount = 1;
   int _intensity = 100;
+  HashMode _mode = HashMode.midstate;
 
   void Function(double hashrate, int totalHashes)? onStats;
   void Function(FoundShare share)? onShare;
@@ -24,7 +27,10 @@ class MinerEngine {
   int get workerCount => _workerCount;
   bool get isStarted => _isolates.isNotEmpty;
 
-  Future<void> start(int workers) async {
+  HashMode get mode => _mode;
+
+  Future<void> start(int workers, {HashMode mode = HashMode.midstate}) async {
+    _mode = mode;
     if (_isolates.isNotEmpty) return;
     _workerCount = workers.clamp(1, 16);
     _totals.clear();
@@ -70,7 +76,8 @@ class MinerEngine {
     });
 
     for (var i = 0; i < _workerCount; i++) {
-      _isolates.add(await Isolate.spawn(_minerEntryPoint, [rx.sendPort, i]));
+      _isolates.add(
+          await Isolate.spawn(_minerEntryPoint, [rx.sendPort, i, _mode.index]));
     }
     await ready.future;
   }
@@ -127,6 +134,8 @@ class MinerEngine {
 void _minerEntryPoint(List<dynamic> args) {
   final mainPort = args[0] as SendPort;
   final index = args[1] as int;
+  final mode = HashMode.values[args[2] as int];
+  final fast = Sha256Fast();
 
   final rx = ReceivePort();
   mainPort.send({'type': 'hello', 'index': index, 'port': rx.sendPort});
@@ -139,6 +148,7 @@ void _minerEntryPoint(List<dynamic> args) {
   var nonce = 0;
   var stride = 1;
   var intensity = 100;
+  var targetHead = 0;
   var totalHashes = 0;
   var running = false;
   var looping = false;
@@ -158,13 +168,40 @@ void _minerEntryPoint(List<dynamic> args) {
 
       final batchStart = DateTime.now().microsecondsSinceEpoch;
       for (var i = 0; i < 1000; i++) {
-        h[76] = nonce & 0xff;
-        h[77] = (nonce >> 8) & 0xff;
-        h[78] = (nonce >> 16) & 0xff;
-        h[79] = (nonce >> 24) & 0xff;
-        final hash = sha256d(h);
+        Uint8List? hash;
+
+        switch (mode) {
+          case HashMode.midstate:
+            // Rejet precoce : les 4 premiers octets du hash retourne suffisent
+            // presque toujours a condamner la tentative, sans rien serialiser.
+            final head = _swap32(fast.hashNonce(nonce));
+            if (head < targetHead) {
+              hash = Uint8List.fromList(fast.digest());
+            } else if (head == targetHead) {
+              final candidate = Uint8List.fromList(fast.digest());
+              if (hashMeetsTarget(candidate, t)) hash = candidate;
+            }
+            break;
+          case HashMode.maison:
+            h[76] = nonce & 0xff;
+            h[77] = (nonce >> 8) & 0xff;
+            h[78] = (nonce >> 16) & 0xff;
+            h[79] = (nonce >> 24) & 0xff;
+            final candidate = Uint8List.fromList(fast.doubleHashFull(h));
+            if (hashMeetsTarget(candidate, t)) hash = candidate;
+            break;
+          case HashMode.compatible:
+            h[76] = nonce & 0xff;
+            h[77] = (nonce >> 8) & 0xff;
+            h[78] = (nonce >> 16) & 0xff;
+            h[79] = (nonce >> 24) & 0xff;
+            final candidate = sha256d(h);
+            if (hashMeetsTarget(candidate, t)) hash = candidate;
+            break;
+        }
+
         totalHashes++;
-        if (hashMeetsTarget(hash, t)) {
+        if (hash != null) {
           mainPort.send({
             'type': 'share',
             'index': index,
@@ -211,6 +248,11 @@ void _minerEntryPoint(List<dynamic> args) {
         extranonce2 = msg['extranonce2'] as String;
         nTime = msg['ntime'] as String;
         stride = (msg['stride'] as int?) ?? 1;
+        targetHead = (target![0] << 24) |
+            (target![1] << 16) |
+            (target![2] << 8) |
+            target![3];
+        if (mode == HashMode.midstate) fast.prepare(header!);
         nonce = (((msg['startNonce'] as int?) ?? 0) + ((msg['offset'] as int?) ?? 0)) &
             0xFFFFFFFF;
         break;
@@ -231,3 +273,11 @@ void _minerEntryPoint(List<dynamic> args) {
     }
   });
 }
+
+
+/// Inverse l'ordre des octets d'un mot de 32 bits.
+int _swap32(int v) =>
+    ((v & 0xff) << 24) |
+    (((v >> 8) & 0xff) << 16) |
+    (((v >> 16) & 0xff) << 8) |
+    ((v >> 24) & 0xff);

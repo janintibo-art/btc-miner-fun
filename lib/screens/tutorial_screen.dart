@@ -162,6 +162,25 @@ const _chapters = <_ChapterData>[
     Icons.notifications_active_rounded,
   ),
   _ChapterData(
+    'Pourquoi on ne peut pas tricher',
+    'SHA-256 est une fonction a avalanche : changer un seul bit de l\'entree '
+        'change en moyenne la moitie des bits de sortie. Un hash calcule a '
+        'moitie n\'a donc aucune ressemblance avec le vrai. Aucun calcul '
+        'approche n\'existe, et le pool recalcule tout avant d\'accepter une '
+        'part : une solution approximative serait rejetee.\n\n'
+        'Ce qui est possible, en revanche, c\'est de supprimer du travail '
+        'inutile, sans jamais changer le resultat :\n\n'
+        'Le midstate. L\'en-tete fait 80 octets, SHA-256 travaille par blocs de '
+        '64, et le nonce ne se trouve que dans le second bloc. Le premier est '
+        'donc identique pour des milliards de tentatives : on le calcule une '
+        'fois par travail recu.\n\n'
+        'Le rejet precoce. Les quatre premiers octets du hash suffisent presque '
+        'toujours a condamner une tentative : inutile de serialiser les 32.\n\n'
+        'L\'onglet Sessions te laisse mesurer les trois moteurs sur ton propre '
+        'appareil, et verifie qu\'ils produisent bien le meme hash.',
+    Icons.bolt_rounded,
+  ),
+  _ChapterData(
     'Compiler l\'APK et le .exe',
     'Le projet est compile par GitHub Actions, pas par ton telephone. A chaque '
         'envoi de code sur la branche main, GitHub construit :\n\n'

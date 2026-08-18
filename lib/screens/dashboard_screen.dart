@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 
 import '../app_theme.dart';
 import '../core/bitcoin_utils.dart';
+import '../core/hash_mode.dart';
 import '../state/miner_controller.dart';
 import '../widgets/app_card.dart';
 import '../widgets/job_inspector.dart';
@@ -146,7 +147,7 @@ class _StatsGrid extends StatelessWidget {
       ['Travaux recus', m.jobsReceived.toString()],
       ['Coeurs actifs', '${m.effectiveThreads} / ${m.availableCores}'],
       ['Parts en attente', m.pendingShares.toString()],
-      ['Intensite', '${m.intensity} %'],
+      ['Moteur', m.hashMode.label],
       [
         'Arriere-plan',
         m.backgroundServiceActive ? 'actif' : (m.isActive ? 'ecran requis' : '-')

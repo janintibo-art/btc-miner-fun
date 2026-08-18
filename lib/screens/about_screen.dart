@@ -18,7 +18,7 @@ class AboutScreen extends StatelessWidget {
               Text('BTC Miner Fun',
                   style: mono(size: 24, weight: FontWeight.w700)),
               const SizedBox(height: 6),
-              Text('Version 0.5.0 - licence MIT',
+              Text('Version 0.6.0 - licence MIT',
                   style: mono(size: 12, color: AppColors.muted)),
               const SizedBox(height: 16),
               const Text(
@@ -32,7 +32,8 @@ class AboutScreen extends StatelessWidget {
         ),
         const SizedBox(height: 16),
         const SectionLabel('Sous le capot'),
-        const _Fact('Hachage', 'Double SHA-256, reparti sur plusieurs coeurs'),
+        const _Fact('Hachage', 'SHA-256 maison avec midstate, sur plusieurs coeurs'),
+        const _Fact('Banc d\'essai', 'Trois moteurs comparables, resultats verifies identiques'),
         const _Fact('Protocole', 'Stratum V1 (subscribe, authorize, notify, submit)'),
         const _Fact('Inspecteur', 'En-tete de bloc affiche en direct, champ par champ'),
         const _Fact('Interface', 'Flutter, Material 3, theme sur mesure'),

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../app_theme.dart';
+import '../core/hash_mode.dart';
 import '../state/miner_controller.dart';
 import '../widgets/app_card.dart';
 
@@ -304,6 +305,62 @@ class _ConfigScreenState extends State<ConfigScreen> {
               ),
             ],
           ),
+        ),
+        const SizedBox(height: 18),
+        const SectionLabel('Moteur de hachage'),
+        AppCard(
+          child: Column(
+            children: [
+              for (final mode in HashMode.values) ...[
+                InkWell(
+                  onTap: locked ? null : () => m.setHashMode(mode),
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Icon(
+                        m.hashMode == mode
+                            ? Icons.radio_button_checked
+                            : Icons.radio_button_off,
+                        size: 21,
+                        color: m.hashMode == mode
+                            ? AppColors.amber
+                            : AppColors.muted,
+                      ),
+                      const SizedBox(width: 14),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(mode.label,
+                                style: TextStyle(
+                                  fontSize: 14.5,
+                                  fontWeight: FontWeight.w700,
+                                  color: m.hashMode == mode
+                                      ? AppColors.ink
+                                      : AppColors.muted,
+                                )),
+                            const SizedBox(height: 4),
+                            Text(mode.description,
+                                style: const TextStyle(
+                                    fontSize: 12,
+                                    height: 1.45,
+                                    color: AppColors.muted)),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                if (mode != HashMode.values.last) const Divider(height: 24),
+              ],
+            ],
+          ),
+        ),
+        const SizedBox(height: 10),
+        Text(
+          'Les trois donnent le meme resultat : mesure-les dans l\'onglet '
+          'Sessions pour voir l\'ecart sur ton appareil.',
+          style: mono(size: 11.5, color: AppColors.muted),
         ),
         const SizedBox(height: 18),
         const SectionLabel('Ecran et arriere-plan'),

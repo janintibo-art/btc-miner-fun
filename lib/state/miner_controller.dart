@@ -7,7 +7,9 @@ import 'package:wakelock_plus/wakelock_plus.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../core/bitcoin_utils.dart';
+import '../core/benchmark.dart';
 import '../core/foreground_service.dart';
+import '../core/hash_mode.dart';
 import '../core/miner_engine.dart';
 import '../core/session.dart';
 import '../core/stratum_client.dart';
@@ -56,6 +58,7 @@ class MinerController extends ChangeNotifier {
   int intensity = 100; // 10 a 100 %
   int autoStopMinutes = 0; // 0 = pas d'arret automatique
   bool keepScreenOn = false;
+  HashMode hashMode = HashMode.midstate;
   bool backgroundServiceActive = false;
 
   // ---- Etat ----
@@ -76,6 +79,8 @@ class MinerController extends ChangeNotifier {
   final List<FoundShare> _pendingShares = <FoundShare>[];
   bool _authorized = false;
   Timer? _autoStopTimer;
+  bool benchmarkRunning = false;
+  BenchmarkResult? benchmark;
 
   int get pendingShares => _pendingShares.length;
 
@@ -113,6 +118,7 @@ class MinerController extends ChangeNotifier {
     intensity = p.getInt('intensity') ?? 100;
     autoStopMinutes = p.getInt('autoStopMinutes') ?? 0;
     keepScreenOn = p.getBool('keepScreenOn') ?? false;
+    hashMode = HashModeInfo.fromName(p.getString('hashMode'));
     sessions.addAll(MiningSession.decodeList(p.getString('sessions') ?? '[]'));
 
     _engine.onStats = (hps, total) {
@@ -143,6 +149,7 @@ class MinerController extends ChangeNotifier {
     await p.setInt('intensity', intensity);
     await p.setInt('autoStopMinutes', autoStopMinutes);
     await p.setBool('keepScreenOn', keepScreenOn);
+    await p.setString('hashMode', hashMode.name);
     log('Reglages enregistres.');
     notifyListeners();
   }
@@ -183,7 +190,7 @@ class MinerController extends ChangeNotifier {
 
     _pendingShares.clear();
     _authorized = false;
-    await _engine.start(effectiveThreads);
+    await _engine.start(effectiveThreads, mode: hashMode);
     _engine.setIntensity(intensity);
     if (keepScreenOn) _setWakelock(true);
 
@@ -469,6 +476,35 @@ class MinerController extends ChangeNotifier {
 
   void setAutoStopMinutes(int value) {
     autoStopMinutes = value;
+    notifyListeners();
+  }
+
+  void setHashMode(HashMode value) {
+    hashMode = value;
+    notifyListeners();
+  }
+
+  /// Mesure les trois moteurs sur un seul coeur, avec le meme en-tete.
+  Future<void> runBenchmark() async {
+    if (benchmarkRunning) return;
+    benchmarkRunning = true;
+    notifyListeners();
+    try {
+      benchmark = await runBenchmarkOnDevice();
+      final r = benchmark!;
+      log('Banc d\'essai : '
+          '${formatHashrate(r.rates[HashMode.compatible] ?? 0)} en '
+          'compatibilite, '
+          '${formatHashrate(r.rates[HashMode.midstate] ?? 0)} en midstate '
+          '(x${r.gainOver(HashMode.compatible, HashMode.midstate).toStringAsFixed(1)}).');
+      if (!r.identical) {
+        log('Attention : les moteurs ne donnent pas le meme hash. '
+            'Reste en mode compatibilite.');
+      }
+    } catch (e) {
+      log('Banc d\'essai impossible : $e');
+    }
+    benchmarkRunning = false;
     notifyListeners();
   }
 

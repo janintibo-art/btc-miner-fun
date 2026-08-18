@@ -48,7 +48,16 @@
 - Demande de la permission de notification sur Android 13 et suivants
 - L'ecran allume devient un choix, plus une obligation
 
-## Etape 6 - a faire
+## Etape 6 - terminee
+
+- SHA-256 ecrit a la main : tampons reutilises, aucune allocation par tentative
+- Midstate : le premier des deux blocs de l'en-tete calcule une fois par travail
+- Rejet precoce sur les quatre premiers octets du hash retourne
+- Trois moteurs selectionnables, comparables dans un banc d'essai integre
+- Tests : mille en-tetes aleatoires compares au paquet crypto, chemin midstate
+  compare au calcul complet, correspondance du mot de rejet precoce
+
+## Etape 7 - a faire
 
 - Lecture de la temperature de la batterie pour brider automatiquement
 - Bouton d'arret directement dans la notification

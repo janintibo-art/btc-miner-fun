@@ -6,6 +6,7 @@ import '../core/bitcoin_utils.dart';
 import '../core/session.dart';
 import '../state/miner_controller.dart';
 import '../widgets/app_card.dart';
+import '../widgets/benchmark_card.dart';
 
 class HistoryScreen extends StatelessWidget {
   const HistoryScreen({super.key});
@@ -18,6 +19,9 @@ class HistoryScreen extends StatelessWidget {
     return ListView(
       padding: const EdgeInsets.fromLTRB(16, 8, 16, 32),
       children: [
+        const SectionLabel('Comparer les moteurs'),
+        const BenchmarkCard(),
+        const SizedBox(height: 20),
         const SectionLabel('Depuis le debut'),
         AppCard(
           child: Column(
