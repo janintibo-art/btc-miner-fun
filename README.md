@@ -20,7 +20,7 @@ Interface soignee, onglet tutoriel integre, mode demo hors ligne et mode pool re
   genere a la compilation par `tool/patch_android.py`.
 - Tableau de bord : puissance de calcul, courbe 60 s, parts, meilleure difficulte, journal.
 - Ecran maintenu allume pendant le minage, icone d'application dediee.
-- Onglet tutoriel en 12 chapitres.
+- Onglet tutoriel en 13 chapitres.
 - **Tests automatiques** : les calculs sont verifies contre le vrai bloc 125552
   de la chaine Bitcoin avant chaque compilation.
 
@@ -40,6 +40,7 @@ btc-miner-fun/
 │   │   ├── bitcoin_utils.dart    Hex, endianness, SHA-256d, cibles
 │   │   ├── stratum_job.dart      Job du pool, en-tete de bloc 80 octets
 │   │   ├── sha256_fast.dart      SHA-256 maison, midstate, zero allocation
+│   │   ├── nonce_walker.dart     Strategies d'exploration, marche signature
 │   │   ├── benchmark.dart        Mesure comparative des trois moteurs
 │   │   ├── stratum_client.dart   Client Stratum V1 (TCP + JSON-RPC)
 │   │   └── miner_engine.dart     Boucle de hachage dans un isolate
@@ -70,6 +71,7 @@ gestionnaire de fichiers.
 
 ## Etat du projet
 
-Etape 6 terminee : moteur SHA-256 maison avec midstate et rejet precoce,
-banc d'essai comparatif, tests de non-regression contre le paquet crypto.
+Etape 7 terminee : trois strategies d'exploration des nonces, dont une marche
+signature propre a chaque utilisateur, verifiee sans repetition ni
+chevauchement entre coeurs.
 Voir `docs/ROADMAP.md` pour la suite.

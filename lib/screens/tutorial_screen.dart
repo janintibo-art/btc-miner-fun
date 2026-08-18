@@ -181,6 +181,24 @@ const _chapters = <_ChapterData>[
     Icons.bolt_rounded,
   ),
   _ChapterData(
+    'Ta marche personnelle',
+    'Le calcul, lui, est impose : SHA-256, verifie par le pool, identique pour '
+        'tout le monde. Impossible d\'inventer un raccourci.\n\n'
+        'Ce qui n\'est impose par personne, c\'est l\'ordre dans lequel tu '
+        'testes les quatre milliards de nonces. Le mode Signature transforme ta '
+        'phrase en une permutation complete de cet espace : une suite qui passe '
+        'par chaque nonce exactement une fois avant de boucler, dans un ordre '
+        'que personne d\'autre n\'utilise.\n\n'
+        'Sois lucide sur ce que ca apporte : rien, en probabilite. Tous les '
+        'nonces se valent, et ton extranonce te separait deja des autres '
+        'mineurs. Ce que ca garantit, c\'est qu\'aucune tentative n\'est '
+        'gaspillee a retester un nonce deja vu, contrairement au tirage '
+        'aleatoire ou un essai sur trois est un doublon au bout d\'un tour.\n\n'
+        'L\'empreinte affichee dans Reglages est la carte d\'identite de ta '
+        'marche : deux constantes, calculees a partir de ta phrase.',
+    Icons.route_rounded,
+  ),
+  _ChapterData(
     'Compiler l\'APK et le .exe',
     'Le projet est compile par GitHub Actions, pas par ton telephone. A chaque '
         'envoi de code sur la branche main, GitHub construit :\n\n'

@@ -57,7 +57,18 @@
 - Tests : mille en-tetes aleatoires compares au paquet crypto, chemin midstate
   compare au calcul complet, correspondance du mot de rejet precoce
 
-## Etape 7 - a faire
+## Etape 7 - terminee
+
+- Trois strategies d'exploration des nonces : sequentielle, aleatoire, signature
+- Marche signature : generateur congruentiel derive d'une phrase, respectant les
+  conditions de Hull-Dobell, donc permutation complete des 2^32 nonces
+- Chaque coeur parcourt la meme suite avec un decalage et un pas propres :
+  aucun chevauchement, verifie par les tests
+- Empreinte de la marche affichee dans les reglages
+- Honnetete assumee : le mode ne change pas les probabilites, il supprime les
+  doublons et rend le parcours unique
+
+## Etape 8 - a faire
 
 - Lecture de la temperature de la batterie pour brider automatiquement
 - Bouton d'arret directement dans la notification

@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 
 import '../app_theme.dart';
 import '../core/hash_mode.dart';
+import '../core/nonce_walker.dart';
 import '../state/miner_controller.dart';
 import '../widgets/app_card.dart';
 
@@ -19,6 +20,7 @@ class _ConfigScreenState extends State<ConfigScreen> {
   final _host = TextEditingController();
   final _port = TextEditingController();
   final _password = TextEditingController();
+  final _signature = TextEditingController();
   bool _loaded = false;
 
   @override
@@ -28,6 +30,7 @@ class _ConfigScreenState extends State<ConfigScreen> {
     _host.dispose();
     _port.dispose();
     _password.dispose();
+    _signature.dispose();
     super.dispose();
   }
 
@@ -38,6 +41,7 @@ class _ConfigScreenState extends State<ConfigScreen> {
     _host.text = m.poolHost;
     _port.text = m.poolPort.toString();
     _password.text = m.poolPassword;
+    _signature.text = m.signaturePhrase;
     _loaded = true;
   }
 
@@ -56,6 +60,7 @@ class _ConfigScreenState extends State<ConfigScreen> {
     m.poolPort = int.tryParse(_port.text.trim()) ?? m.poolPort;
     m.poolPassword =
         _password.text.trim().isEmpty ? 'x' : _password.text.trim();
+    m.signaturePhrase = _signature.text.trim();
     m.saveSettings();
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
@@ -361,6 +366,107 @@ class _ConfigScreenState extends State<ConfigScreen> {
           'Les trois donnent le meme resultat : mesure-les dans l\'onglet '
           'Sessions pour voir l\'ecart sur ton appareil.',
           style: mono(size: 11.5, color: AppColors.muted),
+        ),
+        const SizedBox(height: 18),
+        const SectionLabel('Exploration des nonces'),
+        AppCard(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              for (final strategy in NonceStrategy.values) ...[
+                InkWell(
+                  onTap: locked ? null : () => m.setNonceStrategy(strategy),
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Icon(
+                        m.nonceStrategy == strategy
+                            ? Icons.radio_button_checked
+                            : Icons.radio_button_off,
+                        size: 21,
+                        color: m.nonceStrategy == strategy
+                            ? AppColors.amber
+                            : AppColors.muted,
+                      ),
+                      const SizedBox(width: 14),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(strategy.label,
+                                style: TextStyle(
+                                  fontSize: 14.5,
+                                  fontWeight: FontWeight.w700,
+                                  color: m.nonceStrategy == strategy
+                                      ? AppColors.ink
+                                      : AppColors.muted,
+                                )),
+                            const SizedBox(height: 4),
+                            Text(strategy.description,
+                                style: const TextStyle(
+                                    fontSize: 12,
+                                    height: 1.45,
+                                    color: AppColors.muted)),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                if (strategy != NonceStrategy.values.last)
+                  const Divider(height: 24),
+              ],
+              if (m.nonceStrategy == NonceStrategy.signature) ...[
+                const Divider(height: 24),
+                TextField(
+                  controller: _signature,
+                  enabled: !locked,
+                  style: mono(size: 13),
+                  onChanged: (v) => m.setSignaturePhrase(v),
+                  decoration: const InputDecoration(
+                    labelText: 'Ta phrase signature',
+                    helperText: 'Laisse vide pour une phrase derivee de ton '
+                        'adresse et du nom du worker.',
+                    helperMaxLines: 2,
+                  ),
+                ),
+                const SizedBox(height: 14),
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.all(14),
+                  decoration: BoxDecoration(
+                    color: AppColors.panelHigh,
+                    borderRadius: BorderRadius.circular(14),
+                    border: Border.all(color: AppColors.line),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text('EMPREINTE DE TA MARCHE', style: label()),
+                      const SizedBox(height: 8),
+                      Text(m.signature.fingerprint,
+                          style: mono(
+                              size: 16,
+                              weight: FontWeight.w700,
+                              color: AppColors.amber)),
+                      const SizedBox(height: 8),
+                      Text(describeSignature(m.signature),
+                          style: mono(size: 11, color: AppColors.muted)),
+                      const SizedBox(height: 10),
+                      const Text(
+                        'Ces deux constantes definissent l\'ordre dans lequel '
+                        'ton appareil visitera les nonces. Elles ne changent '
+                        'pas tes chances : elles rendent ton chemin unique et '
+                        'garantissent qu\'aucun nonce n\'est teste deux fois.',
+                        style: TextStyle(
+                            fontSize: 11.5, height: 1.5, color: AppColors.muted),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ],
+          ),
         ),
         const SizedBox(height: 18),
         const SectionLabel('Ecran et arriere-plan'),

@@ -10,6 +10,7 @@ import '../core/bitcoin_utils.dart';
 import '../core/benchmark.dart';
 import '../core/foreground_service.dart';
 import '../core/hash_mode.dart';
+import '../core/nonce_walker.dart';
 import '../core/miner_engine.dart';
 import '../core/session.dart';
 import '../core/stratum_client.dart';
@@ -59,6 +60,8 @@ class MinerController extends ChangeNotifier {
   int autoStopMinutes = 0; // 0 = pas d'arret automatique
   bool keepScreenOn = false;
   HashMode hashMode = HashMode.midstate;
+  NonceStrategy nonceStrategy = NonceStrategy.signature;
+  String signaturePhrase = '';
   bool backgroundServiceActive = false;
 
   // ---- Etat ----
@@ -119,6 +122,8 @@ class MinerController extends ChangeNotifier {
     autoStopMinutes = p.getInt('autoStopMinutes') ?? 0;
     keepScreenOn = p.getBool('keepScreenOn') ?? false;
     hashMode = HashModeInfo.fromName(p.getString('hashMode'));
+    nonceStrategy = NonceStrategyInfo.fromName(p.getString('nonceStrategy'));
+    signaturePhrase = p.getString('signaturePhrase') ?? '';
     sessions.addAll(MiningSession.decodeList(p.getString('sessions') ?? '[]'));
 
     _engine.onStats = (hps, total) {
@@ -150,6 +155,8 @@ class MinerController extends ChangeNotifier {
     await p.setInt('autoStopMinutes', autoStopMinutes);
     await p.setBool('keepScreenOn', keepScreenOn);
     await p.setString('hashMode', hashMode.name);
+    await p.setString('nonceStrategy', nonceStrategy.name);
+    await p.setString('signaturePhrase', signaturePhrase);
     log('Reglages enregistres.');
     notifyListeners();
   }
@@ -190,7 +197,12 @@ class MinerController extends ChangeNotifier {
 
     _pendingShares.clear();
     _authorized = false;
+    _engine.configureWalk(nonceStrategy, signature);
     await _engine.start(effectiveThreads, mode: hashMode);
+    if (nonceStrategy == NonceStrategy.signature) {
+      log('Marche signature ${signature.fingerprint} : '
+          'permutation complete des 4 294 967 296 nonces.');
+    }
     _engine.setIntensity(intensity);
     if (keepScreenOn) _setWakelock(true);
 
@@ -476,6 +488,25 @@ class MinerController extends ChangeNotifier {
 
   void setAutoStopMinutes(int value) {
     autoStopMinutes = value;
+    notifyListeners();
+  }
+
+  /// La phrase reellement utilisee : celle saisie, ou a defaut une phrase
+  /// derivee de l'adresse et du nom du worker.
+  String get effectiveSignaturePhrase => signaturePhrase.trim().isEmpty
+      ? defaultSignaturePhrase(wallet.trim(), workerName.trim())
+      : signaturePhrase.trim();
+
+  NonceSignature get signature =>
+      NonceSignature.fromPhrase(effectiveSignaturePhrase);
+
+  void setNonceStrategy(NonceStrategy value) {
+    nonceStrategy = value;
+    notifyListeners();
+  }
+
+  void setSignaturePhrase(String value) {
+    signaturePhrase = value;
     notifyListeners();
   }
 

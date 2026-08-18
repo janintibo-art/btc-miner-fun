@@ -4,6 +4,7 @@ import 'dart:typed_data';
 
 import 'bitcoin_utils.dart';
 import 'hash_mode.dart';
+import 'nonce_walker.dart';
 import 'sha256_fast.dart';
 import 'stratum_job.dart';
 
@@ -20,6 +21,8 @@ class MinerEngine {
   int _workerCount = 1;
   int _intensity = 100;
   HashMode _mode = HashMode.midstate;
+  NonceStrategy _strategy = NonceStrategy.signature;
+  NonceSignature _signature = NonceSignature.fromPhrase('btc-miner-fun');
 
   void Function(double hashrate, int totalHashes)? onStats;
   void Function(FoundShare share)? onShare;
@@ -28,6 +31,13 @@ class MinerEngine {
   bool get isStarted => _isolates.isNotEmpty;
 
   HashMode get mode => _mode;
+
+  NonceStrategy get strategy => _strategy;
+
+  void configureWalk(NonceStrategy strategy, NonceSignature signature) {
+    _strategy = strategy;
+    _signature = signature;
+  }
 
   Future<void> start(int workers, {HashMode mode = HashMode.midstate}) async {
     _mode = mode;
@@ -87,10 +97,10 @@ class MinerEngine {
     if (ready == null) return;
     await ready.future;
     for (final entry in _ports.entries) {
-      entry.value.send(work.toMap(
-        offset: entry.key,
-        stride: _workerCount,
-      ));
+      final message = work.toMap(offset: entry.key, stride: _workerCount);
+      message['strategy'] = _strategy.index;
+      message['signature'] = _signature.toMap();
+      entry.value.send(message);
     }
   }
 
@@ -147,6 +157,7 @@ void _minerEntryPoint(List<dynamic> args) {
   var nTime = '';
   var nonce = 0;
   var stride = 1;
+  NonceWalker? walker;
   var intensity = 100;
   var targetHead = 0;
   var totalHashes = 0;
@@ -212,7 +223,7 @@ void _minerEntryPoint(List<dynamic> args) {
             'hash': hash,
           });
         }
-        nonce = (nonce + stride) & 0xFFFFFFFF;
+        nonce = walker?.next() ?? ((nonce + stride) & 0xFFFFFFFF);
       }
 
       if (intensity < 100) {
@@ -248,13 +259,21 @@ void _minerEntryPoint(List<dynamic> args) {
         extranonce2 = msg['extranonce2'] as String;
         nTime = msg['ntime'] as String;
         stride = (msg['stride'] as int?) ?? 1;
+        walker = NonceWalker.create(
+          strategy: NonceStrategy.values[(msg['strategy'] as int?) ?? 0],
+          signature: NonceSignature.fromMap(
+              (msg['signature'] as Map?) ?? const {'a': 1, 'c': 1, 's': 0}),
+          startNonce: (msg['startNonce'] as int?) ?? 0,
+          offset: (msg['offset'] as int?) ?? 0,
+          stride: stride,
+        );
+        nonce = walker!.next();
         targetHead = (target![0] << 24) |
             (target![1] << 16) |
             (target![2] << 8) |
             target![3];
         if (mode == HashMode.midstate) fast.prepare(header!);
-        nonce = (((msg['startNonce'] as int?) ?? 0) + ((msg['offset'] as int?) ?? 0)) &
-            0xFFFFFFFF;
+
         break;
       case 'start':
         running = true;
