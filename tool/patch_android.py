@@ -1,12 +1,20 @@
-"""Prepare le projet Android genere par `flutter create`.
+"""Prepare le projet Android genere par ``flutter create``.
 
-Trois choses que Flutter ne fait pas tout seul :
-  1. la permission INTERNET (absente des builds release) ;
-  2. le nom affiche de l'application ;
-  3. un service de premier plan en Kotlin, pour que le minage continue
-     quand l'ecran s'eteint au lieu d'etre suspendu par Android.
+Le depot conserve volontairement seulement les sources Flutter. La CI regenere
+le dossier Android puis ce script ajoute :
+  * les permissions necessaires ;
+  * un service de premier plan pour le calcul explicite lance par l'utilisateur ;
+  * le pont MethodChannel entre Dart et Android.
+
+Le service utilise ``specialUse`` plutot que ``dataSync`` : le minage n'est pas
+une synchronisation de donnees et Android 15 limite les services dataSync a six
+heures cumulees par 24 h. Le sous-type est documente dans le manifeste pour la
+revue Play Console.
 """
+from __future__ import annotations
+
 import pathlib
+import re
 import sys
 
 APP = pathlib.Path("android/app/src/main")
@@ -27,9 +35,9 @@ package = ".".join(kotlin_dir.relative_to(APP / "kotlin").parts)
 print("Package Android :", package)
 
 # --------------------------------------------------------------------------
-# 2. Le service de premier plan
+# 2. Service de premier plan
 # --------------------------------------------------------------------------
-SERVICE_KT = """package __PACKAGE__
+SERVICE_KT = r'''package __PACKAGE__
 
 import android.app.Notification
 import android.app.NotificationChannel
@@ -43,9 +51,9 @@ import android.os.IBinder
 import android.os.PowerManager
 
 /**
- * Service de premier plan : tant qu'il tourne, Android garde le processus en
- * vie et le processeur reveille, meme ecran eteint. La notification permanente
- * est obligatoire, et c'est honnete : l'utilisateur voit que l'appareil calcule.
+ * Service de premier plan : il garde le processus et le CPU disponibles tant
+ * que l'utilisateur a explicitement lance le minage. La notification permanente
+ * rend l'activite visible et le wakelock est toujours relache a l'arret.
  */
 class MiningService : Service() {
 
@@ -57,10 +65,13 @@ class MiningService : Service() {
         val title = intent?.getStringExtra("title") ?: "Minage en cours"
         val text = intent?.getStringExtra("text") ?: ""
 
-        createChannel()
-        startForeground(NOTIFICATION_ID, buildNotification(title, text))
+        createChannel(this)
+        startForeground(NOTIFICATION_ID, buildNotification(this, title, text))
         acquireWakeLock()
-        return START_STICKY
+
+        // Si Android tue le processus, le moteur Dart disparait lui aussi. Il ne
+        // faut donc surtout pas recreer seulement le service et son wakelock.
+        return START_NOT_STICKY
     }
 
     override fun onDestroy() {
@@ -69,14 +80,13 @@ class MiningService : Service() {
     }
 
     override fun onTaskRemoved(rootIntent: Intent?) {
-        // L'utilisateur a balaye l'application : on arrete tout proprement.
         releaseWakeLock()
         stopSelf()
         super.onTaskRemoved(rootIntent)
     }
 
     private fun acquireWakeLock() {
-        if (wakeLock != null) return
+        if (wakeLock?.isHeld == true) return
         val pm = getSystemService(Context.POWER_SERVICE) as PowerManager
         val lock = pm.newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, "BTCMinerFun::mining")
         lock.setReferenceCounted(false)
@@ -87,58 +97,68 @@ class MiningService : Service() {
     private fun releaseWakeLock() {
         try {
             if (wakeLock?.isHeld == true) wakeLock?.release()
-        } catch (e: Exception) {
+        } catch (_: Exception) {
             // Deja relache : rien a faire.
         }
         wakeLock = null
     }
 
-    private fun createChannel() {
-        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) return
-        val manager = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
-        if (manager.getNotificationChannel(CHANNEL_ID) != null) return
-        val channel = NotificationChannel(
-            CHANNEL_ID,
-            "Minage",
-            NotificationManager.IMPORTANCE_LOW
-        )
-        channel.description = "Affiche l'activite du mineur"
-        channel.setShowBadge(false)
-        channel.enableVibration(false)
-        manager.createNotificationChannel(channel)
-    }
-
-    private fun buildNotification(title: String, text: String): Notification {
-        val launch = packageManager.getLaunchIntentForPackage(packageName)
-        var pendingFlags = PendingIntent.FLAG_UPDATE_CURRENT
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-            pendingFlags = pendingFlags or PendingIntent.FLAG_IMMUTABLE
-        }
-        val pending = PendingIntent.getActivity(this, 0, launch, pendingFlags)
-
-        val builder = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            Notification.Builder(this, CHANNEL_ID)
-        } else {
-            @Suppress("DEPRECATION")
-            Notification.Builder(this)
-        }
-
-        return builder
-            .setContentTitle(title)
-            .setContentText(text)
-            .setSmallIcon(applicationInfo.icon)
-            .setOngoing(true)
-            .setOnlyAlertOnce(true)
-            .setContentIntent(pending)
-            .build()
-    }
-
     companion object {
         const val CHANNEL_ID = "mining"
         const val NOTIFICATION_ID = 4711
+
+        fun updateNotification(context: Context, title: String, text: String) {
+            createChannel(context)
+            val manager = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+            manager.notify(NOTIFICATION_ID, buildNotification(context, title, text))
+        }
+
+        private fun createChannel(context: Context) {
+            if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) return
+            val manager = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+            if (manager.getNotificationChannel(CHANNEL_ID) != null) return
+            val channel = NotificationChannel(
+                CHANNEL_ID,
+                "Minage",
+                NotificationManager.IMPORTANCE_LOW
+            )
+            channel.description = "Affiche l'activite du mineur"
+            channel.setShowBadge(false)
+            channel.enableVibration(false)
+            manager.createNotificationChannel(channel)
+        }
+
+        private fun buildNotification(context: Context, title: String, text: String): Notification {
+            val launch = context.packageManager.getLaunchIntentForPackage(context.packageName)
+            var pendingFlags = PendingIntent.FLAG_UPDATE_CURRENT
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+                pendingFlags = pendingFlags or PendingIntent.FLAG_IMMUTABLE
+            }
+            val pending = if (launch != null) {
+                PendingIntent.getActivity(context, 0, launch, pendingFlags)
+            } else {
+                null
+            }
+
+            val builder = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                Notification.Builder(context, CHANNEL_ID)
+            } else {
+                @Suppress("DEPRECATION")
+                Notification.Builder(context)
+            }
+
+            builder
+                .setContentTitle(title)
+                .setContentText(text)
+                .setSmallIcon(context.applicationInfo.icon)
+                .setOngoing(true)
+                .setOnlyAlertOnce(true)
+            if (pending != null) builder.setContentIntent(pending)
+            return builder.build()
+        }
     }
 }
-"""
+'''
 
 (kotlin_dir / "MiningService.kt").write_text(
     SERVICE_KT.replace("__PACKAGE__", package), encoding="utf-8"
@@ -146,9 +166,9 @@ class MiningService : Service() {
 print("MiningService.kt ecrit.")
 
 # --------------------------------------------------------------------------
-# 3. MainActivity : le pont entre Dart et le service
+# 3. MainActivity : pont Dart <-> service
 # --------------------------------------------------------------------------
-MAIN_KT = """package __PACKAGE__
+MAIN_KT = r'''package __PACKAGE__
 
 import android.Manifest
 import android.content.Intent
@@ -168,7 +188,7 @@ class MainActivity : FlutterActivity() {
         MethodChannel(flutterEngine.dartExecutor.binaryMessenger, channelName)
             .setMethodCallHandler { call, result ->
                 when (call.method) {
-                    "start", "update" -> {
+                    "start" -> {
                         ensureNotificationPermission()
                         val intent = Intent(this, MiningService::class.java)
                         intent.putExtra("title", call.argument<String>("title") ?: "Minage")
@@ -178,6 +198,16 @@ class MainActivity : FlutterActivity() {
                         } else {
                             startService(intent)
                         }
+                        result.success(true)
+                    }
+                    "update" -> {
+                        // Mettre a jour la notification ne redemarre pas le
+                        // foreground service : important pour Android 12+.
+                        MiningService.updateNotification(
+                            this,
+                            call.argument<String>("title") ?: "Minage",
+                            call.argument<String>("text") ?: ""
+                        )
                         result.success(true)
                     }
                     "stop" -> {
@@ -198,43 +228,68 @@ class MainActivity : FlutterActivity() {
         }
     }
 }
-"""
+'''
 
 main_activity.write_text(MAIN_KT.replace("__PACKAGE__", package), encoding="utf-8")
 print("MainActivity.kt reecrit avec le pont MethodChannel.")
 
 # --------------------------------------------------------------------------
-# 4. Le manifeste
+# 4. Manifeste
 # --------------------------------------------------------------------------
 text = MANIFEST.read_text(encoding="utf-8")
+
+# Migration si le script est relance sur un ancien dossier Android.
+text = text.replace(
+    "android.permission.FOREGROUND_SERVICE_DATA_SYNC",
+    "android.permission.FOREGROUND_SERVICE_SPECIAL_USE",
+)
+text = text.replace('android:foregroundServiceType="dataSync"',
+                    'android:foregroundServiceType="specialUse"')
 
 permissions = [
     "android.permission.INTERNET",
     "android.permission.WAKE_LOCK",
     "android.permission.FOREGROUND_SERVICE",
-    "android.permission.FOREGROUND_SERVICE_DATA_SYNC",
+    "android.permission.FOREGROUND_SERVICE_SPECIAL_USE",
     "android.permission.POST_NOTIFICATIONS",
 ]
 missing = "".join(
-    '    <uses-permission android:name="{0}"/>\n'.format(p)
-    for p in permissions
-    if p not in text
+    '    <uses-permission android:name="{0}"/>\n'.format(permission)
+    for permission in permissions
+    if permission not in text
 )
 if missing:
     text = text.replace("<application", missing + "    <application", 1)
 
-if "MiningService" not in text:
-    service = (
-        '        <service\n'
-        '            android:name=".MiningService"\n'
-        '            android:exported="false"\n'
-        '            android:stopWithTask="true"\n'
-        '            android:foregroundServiceType="dataSync"/>\n'
-        '    </application>'
-    )
-    text = text.replace("    </application>", service, 1)
+service_block = '''        <service
+            android:name=".MiningService"
+            android:exported="false"
+            android:stopWithTask="true"
+            android:foregroundServiceType="specialUse">
+            <property
+                android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE"
+                android:value="User-initiated Bitcoin proof-of-work computation while a persistent notification is visible."/>
+        </service>
+'''
 
+# Supprimer une declaration MiningService precedente pour rendre le script
+# idempotent, sans consommer l'indentation/fermeture de <application>.
+text = re.sub(
+    r'\n[ \t]*<service\s+[^>]*android:name="\.MiningService"[\s\S]*?</service>[ \t]*\n?',
+    '\n',
+    text,
+    count=1,
+)
+text = re.sub(
+    r'\n[ \t]*<service\s+[^>]*android:name="\.MiningService"[^>]*/>[ \t]*\n?',
+    '\n',
+    text,
+    count=1,
+)
+if "</application>" not in text:
+    sys.exit("Balise </application> introuvable dans le manifeste.")
+text = text.replace("</application>", service_block + "    </application>", 1)
 text = text.replace('android:label="btc_miner_fun"', 'android:label="BTC Miner Fun"')
 
 MANIFEST.write_text(text, encoding="utf-8")
-print("Manifeste mis a jour.")
+print("Manifeste mis a jour (foreground service specialUse).")

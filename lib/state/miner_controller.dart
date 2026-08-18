@@ -33,9 +33,15 @@ class PoolPreset {
 
 const kPoolPresets = <PoolPreset>[
   PoolPreset('Public Pool (solo)', 'public-pool.io', 21496,
-      'Pool solo pense pour les petits mineurs. Difficulte tres basse.'),
+      'Solo sans commission, pense pour les tres petits mineurs. '
+      'Difficulte minimale tres basse : le meilleur choix ici.'),
   PoolPreset('CKPool solo', 'solo.ckpool.org', 3333,
-      'Solo historique. Difficulte plus elevee, parts beaucoup plus rares.'),
+      'Solo historique, 2 % de commission. Difficulte plus elevee, '
+      'donc des parts beaucoup plus rares.'),
+  PoolPreset('CKPool partage', 'stratum.ckpool.org', 3333,
+      'Pool partage : les gains sont proportionnels au travail fourni. '
+      'Un telephone n\'atteindra jamais le seuil de paiement, mais les '
+      'parts acceptees y sont plus frequentes.'),
 ];
 
 class MinerController extends ChangeNotifier {
@@ -49,8 +55,18 @@ class MinerController extends ChangeNotifier {
   String _extranonce1 = '';
   int _extranonce2Size = 4;
   int _extranonce2Counter = 0;
+  String? _pendingExtranonce1;
+  int? _pendingExtranonce2Size;
+  double _activeJobDifficulty = 0;
   bool _wantsMining = false;
+  bool _shuttingDown = false;
   int _reconnectAttempts = 0;
+  DateTime _lastStatsUiNotify = DateTime.fromMillisecondsSinceEpoch(0);
+
+  int _lifetimeHashes = 0;
+  int _lifetimeSeconds = 0;
+  int _lifetimeAccepted = 0;
+  double _lifetimeBest = 0;
 
   // ---- Reglages ----
   String poolHost = kPoolPresets.first.host;
@@ -135,6 +151,25 @@ class MinerController extends ChangeNotifier {
     if (cached != null && cached.address == wallet.trim()) balance = cached;
     sessions.addAll(MiningSession.decodeList(p.getString('sessions') ?? '[]'));
 
+    if (p.containsKey('lifetimeHashes')) {
+      _lifetimeHashes = p.getInt('lifetimeHashes') ?? 0;
+      _lifetimeSeconds = p.getInt('lifetimeSeconds') ?? 0;
+      _lifetimeAccepted = p.getInt('lifetimeAccepted') ?? 0;
+      _lifetimeBest = p.getDouble('lifetimeBest') ?? 0;
+    } else {
+      // Migration v11 : initialiser les nouveaux compteurs avec les sessions
+      // encore presentes sur l'appareil.
+      for (final session in sessions) {
+        _lifetimeHashes += session.hashes;
+        _lifetimeSeconds += session.seconds;
+        _lifetimeAccepted += session.accepted;
+        if (session.bestDifficulty > _lifetimeBest) {
+          _lifetimeBest = session.bestDifficulty;
+        }
+      }
+      await _persistLifetime();
+    }
+
     _engine.onStats = (hps, total) {
       hashrate = hps;
       totalHashes = total;
@@ -142,7 +177,14 @@ class MinerController extends ChangeNotifier {
         status = MinerStatus.mining;
         statusMessage = 'Minage en cours sur $poolHost';
       }
-      notifyListeners();
+      // Plusieurs isolates publient souvent presque au meme instant. On garde
+      // toutes les mesures mais on limite les reconstructions de l'interface.
+      final now = DateTime.now();
+      if (now.difference(_lastStatsUiNotify) >=
+          const Duration(milliseconds: 250)) {
+        _lastStatsUiNotify = now;
+        notifyListeners();
+      }
     };
     _engine.onShare = _onShareFound;
 
@@ -166,6 +208,11 @@ class MinerController extends ChangeNotifier {
     await p.setString('hashMode', hashMode.name);
     await p.setString('nonceStrategy', nonceStrategy.name);
     await p.setString('signaturePhrase', signaturePhrase);
+    if (balance != null && balance!.address != wallet.trim()) {
+      balance = null;
+      balanceError = null;
+      await p.remove('balance');
+    }
     log('Reglages enregistres.');
     notifyListeners();
   }
@@ -201,14 +248,27 @@ class MinerController extends ChangeNotifier {
     bestDifficulty = 0;
     jobsReceived = 0;
     poolDifficulty = 0;
+    _activeJobDifficulty = 0;
+    _pendingExtranonce1 = null;
+    _pendingExtranonce2Size = null;
+    _extranonce1 = '';
     job = null;
+    _job = null;
     history.clear();
     startedAt = DateTime.now();
 
     _pendingShares.clear();
     _authorized = false;
     _engine.configureWalk(nonceStrategy, signature);
-    await _engine.start(effectiveThreads, mode: hashMode);
+    try {
+      await _engine.start(effectiveThreads, mode: hashMode);
+    } catch (e) {
+      await _failMining(
+        'Moteur indisponible',
+        'Impossible de demarrer les isolates de minage : $e',
+      );
+      return;
+    }
     if (nonceStrategy == NonceStrategy.signature) {
       log('Marche signature ${signature.fingerprint} : '
           'permutation complete des 4 294 967 296 nonces.');
@@ -250,41 +310,108 @@ class MinerController extends ChangeNotifier {
   }
 
   Future<void> _connect() async {
+    if (!_wantsMining) return;
+
+    // Une reconnexion repart avec un etat Stratum propre. La difficulte et
+    // l'extranonce appartiennent a la connexion courante et ne doivent pas etre
+    // reutilises aveuglement apres une coupure.
+    final previous = _client;
+    _client = null;
+    if (previous != null) {
+      await previous.disconnect();
+    }
+    if (!_wantsMining) return;
+
+    _authorized = false;
+    _job = null;
+    job = null;
+    poolDifficulty = 0;
+    _activeJobDifficulty = 0;
+    _extranonce1 = '';
+    _pendingExtranonce1 = null;
+    _pendingExtranonce2Size = null;
+
     status = MinerStatus.connecting;
     statusMessage = 'Connexion a $poolHost';
     notifyListeners();
 
     final client = StratumClient();
     _client = client;
-    client.onLog = log;
+    bool isCurrent() => identical(_client, client);
+
+    client.onLog = (line) {
+      if (isCurrent()) log(line);
+    };
     client.onSubscribed = (e1, size) {
+      if (!isCurrent()) return;
       _extranonce1 = e1;
       _extranonce2Size = size;
-      _reconnectAttempts = 0;
+      _extranonce2Counter = 0;
+    };
+    client.onExtranonce = (e1, size) {
+      if (!isCurrent()) return;
+      // Stratum V1 : ces valeurs prennent effet au prochain mining.notify.
+      _pendingExtranonce1 = e1;
+      _pendingExtranonce2Size = size;
     };
     client.onAuthorized = (ok) {
+      if (!isCurrent()) return;
       _authorized = ok;
       if (ok) {
         status = MinerStatus.waitingJob;
-        statusMessage = 'En attente d\'un travail du pool';
+        statusMessage = "En attente d'un travail du pool";
+        notifyListeners();
       } else {
-        _wantsMining = false;
-        status = MinerStatus.error;
-        statusMessage = 'Refuse par le pool';
+        unawaited(_failMining(
+          'Refuse par le pool',
+          'Le pool a refuse le worker. Le moteur et le service Android ont ete arretes.',
+        ));
+      }
+    };
+    client.onDifficulty = (d) {
+      if (!isCurrent()) return;
+      // Une difficulte annoncee en cours de route ne s'applique qu'au prochain
+      // job : changer la cible d'un travail deja lance invaliderait les parts
+      // en vol. Exception : si aucun travail n'a encore demarre, il ne faut pas
+      // attendre le job suivant, qui peut mettre une minute a arriver.
+      poolDifficulty = d;
+      if (_activeJobDifficulty <= 0 && _job != null && d > 0) {
+        _activeJobDifficulty = d;
+        log('Difficulte recue apres le premier job : demarrage immediat.');
+        _pushWork();
+        _flushPendingShares();
       }
       notifyListeners();
     };
-    client.onDifficulty = (d) {
-      poolDifficulty = d;
-      _pushWork();
-    };
     client.onJob = (j) {
+      if (!isCurrent()) return;
+
+      if (_pendingExtranonce1 != null && _pendingExtranonce2Size != null) {
+        _extranonce1 = _pendingExtranonce1!;
+        _extranonce2Size = _pendingExtranonce2Size!;
+        _extranonce2Counter = 0;
+        _pendingExtranonce1 = null;
+        _pendingExtranonce2Size = null;
+        log('Nouvel extranonce applique au job ${j.jobId}.');
+      }
+
       _job = j;
       jobsReceived++;
+      _reconnectAttempts = 0;
+      if (poolDifficulty <= 0) {
+        status = MinerStatus.waitingJob;
+        statusMessage = 'Job recu, attente de la difficulte du pool';
+        log("Job ${j.jobId} conserve en attente d'une difficulte valide.");
+        notifyListeners();
+        return;
+      }
+
+      _activeJobDifficulty = poolDifficulty;
       _pushWork();
       _flushPendingShares();
     };
     client.onSubmitResult = (ok, reason) {
+      if (!isCurrent()) return;
       if (ok) {
         accepted++;
         log('Part acceptee par le pool.');
@@ -295,6 +422,7 @@ class MinerController extends ChangeNotifier {
       notifyListeners();
     };
     client.onDisconnected = (msg) {
+      if (!isCurrent()) return;
       _authorized = false;
       log(msg);
       _scheduleReconnect();
@@ -308,22 +436,22 @@ class MinerController extends ChangeNotifier {
         password: poolPassword,
       );
     } catch (e) {
+      if (!isCurrent() || !_wantsMining) return;
       log('Connexion impossible : $e');
       _scheduleReconnect();
     }
   }
 
   void _scheduleReconnect() {
-    if (!_wantsMining) return;
+    if (!_wantsMining || _shuttingDown) return;
     _engine.pause();
     _reconnectTimer?.cancel();
     _reconnectAttempts++;
     if (_reconnectAttempts > 6) {
-      _wantsMining = false;
-      status = MinerStatus.error;
-      statusMessage = 'Pool injoignable';
-      log('Abandon apres 6 tentatives. Verifie ta connexion ou le serveur du pool.');
-      notifyListeners();
+      unawaited(_failMining(
+        'Pool injoignable',
+        'Abandon apres 6 reconnexions. Verifie ta connexion ou le serveur du pool.',
+      ));
       return;
     }
     final delay = Duration(seconds: 3 * _reconnectAttempts);
@@ -333,34 +461,76 @@ class MinerController extends ChangeNotifier {
         '($_reconnectAttempts/6).');
     notifyListeners();
     _reconnectTimer = Timer(delay, () {
-      if (_wantsMining) _connect();
+      if (_wantsMining) unawaited(_connect());
     });
   }
 
-  Future<void> stop() async {
-    _recordSession();
+  Future<void> _cleanupRuntime({bool recordSession = true}) async {
+    // Couper d'abord la production de nouveau travail : la persistance de
+    // l'historique ne doit jamais retarder l'arret du calcul ou du reseau.
     _wantsMining = false;
+    _engine.pause();
+    if (recordSession) {
+      try {
+        await _recordSession();
+      } catch (e) {
+        log("Historique non enregistre pendant l'arret : $e");
+      }
+    }
+    _authorized = false;
     _autoStopTimer?.cancel();
     _autoStopTimer = null;
     _reconnectTimer?.cancel();
     _reconnectTimer = null;
     _ticker?.cancel();
     _ticker = null;
-    await _client?.disconnect();
+
+    final client = _client;
     _client = null;
+    await client?.disconnect();
     await _engine.stop();
     _setWakelock(false);
     if (backgroundServiceActive) {
       await ForegroundService.stop();
       backgroundServiceActive = false;
     }
-    status = MinerStatus.stopped;
-    statusMessage = 'A l\'arret';
-    hashrate = 0;
-    startedAt = null;
+
+    _pendingShares.clear();
+    _job = null;
     job = null;
-    log('Minage arrete.');
-    notifyListeners();
+    hashrate = 0;
+    _activeJobDifficulty = 0;
+    _pendingExtranonce1 = null;
+    _pendingExtranonce2Size = null;
+    startedAt = null;
+  }
+
+  Future<void> _failMining(String message, String detail) async {
+    if (_shuttingDown) return;
+    _shuttingDown = true;
+    try {
+      await _cleanupRuntime();
+      status = MinerStatus.error;
+      statusMessage = message;
+      log(detail);
+      notifyListeners();
+    } finally {
+      _shuttingDown = false;
+    }
+  }
+
+  Future<void> stop() async {
+    if (_shuttingDown) return;
+    _shuttingDown = true;
+    try {
+      await _cleanupRuntime();
+      status = MinerStatus.stopped;
+      statusMessage = "A l'arret";
+      log('Minage arrete.');
+      notifyListeners();
+    } finally {
+      _shuttingDown = false;
+    }
   }
 
   Future<void> toggle() => _wantsMining ? stop() : start();
@@ -369,15 +539,21 @@ class MinerController extends ChangeNotifier {
 
   void _pushWork() {
     final j = _job;
-    if (j == null || _extranonce1.isEmpty || poolDifficulty <= 0) return;
+    if (j == null || _extranonce1.isEmpty || _activeJobDifficulty <= 0) return;
 
-    _extranonce2Counter = (_extranonce2Counter + 1) & 0x7fffffff;
+    // L'extranonce2 doit avoir exactement la taille annoncee par le pool.
+    // Pour les petites tailles (< 4 octets), boucler avant de depasser la largeur.
+    final en2Bits = _extranonce2Size * 8;
+    final en2Mask = en2Bits > 0 && en2Bits < 31
+        ? (1 << en2Bits) - 1
+        : 0x7fffffff;
+    _extranonce2Counter = (_extranonce2Counter + 1) & en2Mask;
     final en2 = _extranonce2Counter
         .toRadixString(16)
         .padLeft(_extranonce2Size * 2, '0');
     final root = j.merkleRootFor(_extranonce1, en2);
     final header = j.headerFor(root);
-    final target = targetFromDifficulty(poolDifficulty);
+    final target = targetFromDifficulty(_activeJobDifficulty);
 
     job = JobSnapshot(
       jobId: j.jobId,
@@ -389,7 +565,7 @@ class MinerController extends ChangeNotifier {
       extranonce1: _extranonce1,
       extranonce2: en2,
       targetHex: bytesToHex(target),
-      difficulty: poolDifficulty,
+      difficulty: _activeJobDifficulty,
       transactionsCount: j.merkleBranch.length,
       receivedAt: DateTime.now(),
     );
@@ -458,10 +634,19 @@ class MinerController extends ChangeNotifier {
     notifyListeners();
   }
 
-  void _recordSession() {
+  Future<void> _recordSession() async {
     final started = startedAt;
     if (started == null || totalHashes == 0) return;
-    final seconds = DateTime.now().difference(started).inSeconds;
+    final seconds = max(1, DateTime.now().difference(started).inSeconds);
+
+    // Les totaux "Depuis le debut" sont conserves independamment des 50
+    // sessions affichees. Ils ne disparaissent donc plus quand la liste tourne.
+    _lifetimeHashes += totalHashes;
+    _lifetimeSeconds += seconds;
+    _lifetimeAccepted += accepted;
+    if (bestDifficulty > _lifetimeBest) _lifetimeBest = bestDifficulty;
+    await _persistLifetime();
+
     if (seconds < 10) return;
     sessions.insert(
       0,
@@ -469,7 +654,7 @@ class MinerController extends ChangeNotifier {
         startedAt: started,
         seconds: seconds,
         hashes: totalHashes,
-        averageHashrate: seconds == 0 ? 0 : totalHashes / seconds,
+        averageHashrate: totalHashes / seconds,
         bestDifficulty: bestDifficulty,
         accepted: accepted,
         rejected: rejected,
@@ -480,9 +665,16 @@ class MinerController extends ChangeNotifier {
     while (sessions.length > 50) {
       sessions.removeLast();
     }
-    SharedPreferences.getInstance().then(
-      (p) => p.setString('sessions', MiningSession.encodeList(sessions)),
-    );
+    final p = await SharedPreferences.getInstance();
+    await p.setString('sessions', MiningSession.encodeList(sessions));
+  }
+
+  Future<void> _persistLifetime() async {
+    final p = await SharedPreferences.getInstance();
+    await p.setInt('lifetimeHashes', _lifetimeHashes);
+    await p.setInt('lifetimeSeconds', _lifetimeSeconds);
+    await p.setInt('lifetimeAccepted', _lifetimeAccepted);
+    await p.setDouble('lifetimeBest', _lifetimeBest);
   }
 
   void setThreads(int value) {
@@ -541,10 +733,13 @@ class MinerController extends ChangeNotifier {
 
   /// Consulte le solde de l'adresse configuree. Lecture seule : aucune cle
   /// n'existe dans cette application, aucune depense n'est possible.
-  Future<void> refreshBalance() async {
-    final address = wallet.trim();
-    if (address.isEmpty || !walletLooksValid) {
-      balanceError = 'Configure d\'abord une adresse valide.';
+  Future<void> refreshBalance([String? rawAddress]) async {
+    final address = (rawAddress ?? wallet).trim();
+    final check = checkBitcoinAddress(address);
+    if (address.isEmpty || !check.valid) {
+      balanceError = address.isEmpty
+          ? "Configure d'abord une adresse valide."
+          : check.message;
       notifyListeners();
       return;
     }
@@ -558,7 +753,7 @@ class MinerController extends ChangeNotifier {
       final p = await SharedPreferences.getInstance();
       await p.setString('balance', result.encode());
       log(result.isEmpty
-          ? 'Adresse consultee : aucun mouvement pour l\'instant.'
+          ? "Adresse consultee : aucun mouvement pour l'instant."
           : 'Solde : ${formatBtc(result.totalBtc)} bitcoin.');
     } catch (e) {
       balanceError = 'Consultation impossible : verifie ta connexion.';
@@ -622,24 +817,27 @@ class MinerController extends ChangeNotifier {
 
   Future<void> clearSessions() async {
     sessions.clear();
+    _lifetimeHashes = 0;
+    _lifetimeSeconds = 0;
+    _lifetimeAccepted = 0;
+    _lifetimeBest = 0;
     final p = await SharedPreferences.getInstance();
     await p.remove('sessions');
-    log('Historique efface.');
+    await p.remove('lifetimeHashes');
+    await p.remove('lifetimeSeconds');
+    await p.remove('lifetimeAccepted');
+    await p.remove('lifetimeBest');
+    log('Historique et totaux cumules effaces.');
     notifyListeners();
   }
 
-  /// Totaux cumules de toutes les sessions conservees.
-  ({int hashes, int seconds, int accepted, double best}) get lifetime {
-    var hashes = 0, seconds = 0, accepted = 0;
-    var best = 0.0;
-    for (final s in sessions) {
-      hashes += s.hashes;
-      seconds += s.seconds;
-      accepted += s.accepted;
-      if (s.bestDifficulty > best) best = s.bestDifficulty;
-    }
-    return (hashes: hashes, seconds: seconds, accepted: accepted, best: best);
-  }
+  /// Totaux persistants, independants de la limite de 50 sessions affichees.
+  ({int hashes, int seconds, int accepted, double best}) get lifetime => (
+        hashes: _lifetimeHashes,
+        seconds: _lifetimeSeconds,
+        accepted: _lifetimeAccepted,
+        best: _lifetimeBest,
+      );
 
   void _updateNotification() {
     final parts = accepted == 0

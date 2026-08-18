@@ -9,6 +9,10 @@ void main() {
       expect(bytesToHex(hexToBytes(h)), h);
     });
 
+    test('une chaine hex de longueur impaire est refusee', () {
+      expect(() => hexToBytes('abc'), throwsFormatException);
+    });
+
     test('inversion complete', () {
       expect(bytesToHex(reverseBytes(hexToBytes('01020304'))), '04030201');
     });
@@ -52,6 +56,10 @@ void main() {
         bytesToHex(targetFromDifficulty(1)),
         '00000000ffff0000000000000000000000000000000000000000000000000000',
       );
+    });
+
+    test('une difficulte positive extremement faible ne divise pas par zero', () {
+      expect(targetFromDifficulty(0.00000001).length, 32);
     });
 
     test('une difficulte plus haute donne une cible plus basse', () {

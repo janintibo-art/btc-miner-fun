@@ -8,6 +8,9 @@ const String _hexChars = '0123456789abcdef';
 
 Uint8List hexToBytes(String hex) {
   final clean = hex.trim();
+  if (clean.length.isOdd) {
+    throw const FormatException('Une chaine hexadecimale doit avoir une longueur paire.');
+  }
   final out = Uint8List(clean.length ~/ 2);
   for (var i = 0; i < out.length; i++) {
     out[i] = int.parse(clean.substring(i * 2, i * 2 + 2), radix: 16);
@@ -72,7 +75,9 @@ final BigInt diff1Target = BigInt.parse(
 Uint8List targetFromDifficulty(double difficulty) {
   if (difficulty <= 0) difficulty = 1;
   const scale = 1000000;
-  final scaled = BigInt.from((difficulty * scale).round());
+  final scaledValue = (difficulty * scale).round();
+  // Evite une division par zero pour une difficulte positive extremement faible.
+  final scaled = BigInt.from(scaledValue <= 0 ? 1 : scaledValue);
   final target = (diff1Target * BigInt.from(scale)) ~/ scaled;
   return bigIntTo32Bytes(target);
 }

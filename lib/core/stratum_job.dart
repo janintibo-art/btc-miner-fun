@@ -2,6 +2,22 @@ import 'dart:typed_data';
 
 import 'bitcoin_utils.dart';
 
+
+final RegExp _hexPattern = RegExp(r'^[0-9a-fA-F]*$');
+
+void _requireHex(
+  String value, {
+  int? exactChars,
+  required String field,
+  bool allowEmpty = false,
+}) {
+  if ((!allowEmpty && value.isEmpty) || value.length.isOdd ||
+      (exactChars != null && value.length != exactChars) ||
+      !_hexPattern.hasMatch(value)) {
+    throw FormatException('$field hexadecimal invalide');
+  }
+}
+
 /// Un travail ("job") envoye par le pool via mining.notify.
 class StratumJob {
   StratumJob({
@@ -27,15 +43,43 @@ class StratumJob {
   final bool cleanJobs;
 
   factory StratumJob.fromNotify(List<dynamic> p) {
+    if (p.length < 8) {
+      throw const FormatException('job Stratum incomplet');
+    }
+    final jobId = p[0] as String;
+    final prevHash = p[1] as String;
+    final coinb1 = p[2] as String;
+    final coinb2 = p[3] as String;
+    final rawBranch = p[4] as List;
+    final version = p[5] as String;
+    final nBits = p[6] as String;
+    final nTime = p[7] as String;
+
+    if (jobId.isEmpty) throw const FormatException('job id vide');
+    _requireHex(prevHash, exactChars: 64, field: 'prevhash');
+    _requireHex(coinb1, field: 'coinb1');
+    _requireHex(coinb2, field: 'coinb2', allowEmpty: true);
+    _requireHex(version, exactChars: 8, field: 'version');
+    _requireHex(nBits, exactChars: 8, field: 'nbits');
+    _requireHex(nTime, exactChars: 8, field: 'ntime');
+    final branch = <String>[];
+    for (final raw in rawBranch) {
+      if (raw is! String) {
+        throw const FormatException('branche de Merkle non textuelle');
+      }
+      _requireHex(raw, exactChars: 64, field: 'merkle branch');
+      branch.add(raw);
+    }
+
     return StratumJob(
-      jobId: p[0] as String,
-      prevHash: p[1] as String,
-      coinb1: p[2] as String,
-      coinb2: p[3] as String,
-      merkleBranch: (p[4] as List).map((e) => e.toString()).toList(),
-      version: p[5] as String,
-      nBits: p[6] as String,
-      nTime: p[7] as String,
+      jobId: jobId,
+      prevHash: prevHash,
+      coinb1: coinb1,
+      coinb2: coinb2,
+      merkleBranch: branch,
+      version: version,
+      nBits: nBits,
+      nTime: nTime,
       cleanJobs: p.length > 8 && p[8] == true,
     );
   }

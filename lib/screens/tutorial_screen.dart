@@ -214,8 +214,9 @@ const _chapters = <_ChapterData>[
         'La ligne la plus parlante est celle du delai moyen avant un bloc. '
         'Regarde-la une fois, elle vaut tous les discours.\n\n'
         'Le cours vient de CoinGecko et la puissance du reseau de '
-        'mempool.space. Aucune inscription, aucune donnee envoyee : ce sont de '
-        'simples lectures. Hors ligne, tu peux fixer le cours a la main.',
+        "mempool.space. Aucune inscription ni cle secrete n'est envoyee, mais "
+        "ces services voient naturellement l'adresse IP de la requete. Hors "
+        'ligne, tu peux fixer le cours a la main.',
     Icons.euro_rounded,
   ),
   _ChapterData(
@@ -238,7 +239,8 @@ const _chapters = <_ChapterData>[
     'Une adresse Bitcoin est publique par nature : n\'importe qui peut '
         'consulter ce qu\'elle a recu, puisque toutes les transactions sont '
         'inscrites dans une chaine ouverte. C\'est ce que fait l\'onglet '
-        'Convertir en interrogeant un explorateur.\n\n'
+        "Convertir en interrogeant mempool.space. L'adresse consultee est "
+        'donc transmise a cet explorateur via HTTPS.\n\n'
         'Consulter et depenser sont deux choses totalement separees : la '
         'premiere ne demande que l\'adresse, la seconde exige la cle privee. '
         'Cette application n\'a que la premiere, et c\'est un choix : meme si '

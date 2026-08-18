@@ -21,6 +21,13 @@ jobs:
       - name: Dependances
         run: flutter pub get
 
+      # Informatif : les regles de style ne doivent pas empecher de produire
+      # un APK. Les vraies erreurs seront de toute facon relevees par
+      # flutter test et par la compilation elle-meme.
+      - name: Analyse statique Dart / Flutter
+        continue-on-error: true
+        run: flutter analyze --no-fatal-infos
+
       - name: Verifier les calculs sur un vrai bloc Bitcoin
         run: flutter test
 

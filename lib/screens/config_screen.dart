@@ -87,9 +87,16 @@ class _ConfigScreenState extends State<ConfigScreen> {
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
           child: ListTile(
             contentPadding: EdgeInsets.zero,
-            onTap: () => Navigator.of(context).push(
-              MaterialPageRoute<void>(builder: (_) => const WalletScreen()),
-            ),
+            onTap: () async {
+              await Navigator.of(context).push(
+                MaterialPageRoute<void>(builder: (_) => const WalletScreen()),
+              );
+              if (!mounted) return;
+              // L'assistant peut avoir change l'adresse directement dans le
+              // modele. Resynchroniser ce champ evite qu'un ancien texte ne
+              // l'ecrase au prochain appui sur "Enregistrer".
+              setState(() => _wallet.text = m.wallet);
+            },
             leading: const Icon(Icons.account_balance_wallet_rounded,
                 color: AppColors.amber),
             title: const Text('Assistant portefeuille',

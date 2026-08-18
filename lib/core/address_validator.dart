@@ -42,12 +42,15 @@ AddressCheck checkBitcoinAddress(String raw) {
   }
 
   final lower = address.toLowerCase();
-  if (lower.startsWith('bc1') || lower.startsWith('tb1') ||
+  if (lower.startsWith('bc1') ||
+      lower.startsWith('tb1') ||
       lower.startsWith('bcrt1')) {
     return _checkBech32(address);
   }
-  if (address.startsWith('1') || address.startsWith('3') ||
-      address.startsWith('m') || address.startsWith('n') ||
+  if (address.startsWith('1') ||
+      address.startsWith('3') ||
+      address.startsWith('m') ||
+      address.startsWith('n') ||
       address.startsWith('2')) {
     return _checkBase58(address);
   }
@@ -152,8 +155,31 @@ AddressCheck _checkBech32(String address) {
     );
   }
 
+  // Six symboles sont reserves au checksum. Il faut au minimum le symbole de
+  // version avant d'acceder a payload.first.
+  if (data.length <= 6) {
+    return const AddressCheck(
+      valid: false,
+      message: 'Le contenu de l\'adresse est vide ou incomplet.',
+    );
+  }
+
   final payload = data.sublist(0, data.length - 6);
+  if (payload.isEmpty) {
+    return const AddressCheck(
+      valid: false,
+      message: 'Le contenu de l\'adresse est vide ou incomplet.',
+    );
+  }
+
   final witnessVersion = payload.first;
+  if (witnessVersion < 0 || witnessVersion > 16) {
+    return const AddressCheck(
+      valid: false,
+      message: 'Version SegWit invalide : Bitcoin accepte les versions 0 a 16.',
+    );
+  }
+
   final program = _convertBits(payload.sublist(1), 5, 8, false);
   if (program == null || program.length < 2 || program.length > 40) {
     return const AddressCheck(
@@ -162,13 +188,21 @@ AddressCheck _checkBech32(String address) {
     );
   }
 
+  // BIP 350 : v0 utilise Bech32, toutes les versions 1 a 16 utilisent Bech32m.
+  if (witnessVersion == 0 && !isBech32) {
+    return const AddressCheck(
+      valid: false,
+      message: 'Mauvais code de controle pour une adresse SegWit version 0.',
+    );
+  }
+  if (witnessVersion > 0 && !isBech32m) {
+    return const AddressCheck(
+      valid: false,
+      message: 'Mauvais code de controle Bech32m pour cette version SegWit.',
+    );
+  }
+
   if (witnessVersion == 0) {
-    if (!isBech32) {
-      return const AddressCheck(
-        valid: false,
-        message: 'Mauvais code de controle pour ce type d\'adresse.',
-      );
-    }
     if (program.length == 20) {
       return const AddressCheck(
         valid: true,
@@ -193,18 +227,11 @@ AddressCheck _checkBech32(String address) {
   }
 
   if (witnessVersion == 1 && program.length == 32) {
-    if (!isBech32m) {
-      return const AddressCheck(
-        valid: false,
-        message: 'Mauvais code de controle pour une adresse Taproot.',
-      );
-    }
     return const AddressCheck(
       valid: true,
       message: 'Adresse valide.',
       type: 'Taproot (P2TR)',
-      detail: 'Format recent. Verifie que ton pool le prend en charge : '
-          'quelques-uns refusent encore les adresses bc1p.',
+      detail: 'Adresse SegWit version 1 au format Bech32m.',
     );
   }
 
@@ -212,7 +239,8 @@ AddressCheck _checkBech32(String address) {
     valid: true,
     message: 'Adresse valide, mais de format inhabituel.',
     type: 'SegWit version $witnessVersion',
-    detail: 'Format trop recent pour la plupart des pools.',
+    detail: 'Version SegWit valide au sens BIP 350 ; verifie la compatibilite '
+        'du pool avant de l\'utiliser.',
   );
 }
 
@@ -254,6 +282,8 @@ AddressCheck _checkBase58(String address) {
   }
 
   var number = BigInt.zero;
+  var leadingZeroes = 0;
+  var stillLeading = true;
   for (final c in address.split('')) {
     final index = _b58.indexOf(c);
     if (index < 0) {
@@ -264,26 +294,41 @@ AddressCheck _checkBase58(String address) {
             'exclus pour eviter les confusions.',
       );
     }
+    if (stillLeading && index == 0) {
+      leadingZeroes++;
+    } else {
+      stillLeading = false;
+    }
     number = number * BigInt.from(58) + BigInt.from(index);
   }
 
-  // 25 octets : 1 de version, 20 de contenu, 4 de controle.
-  final bytes = Uint8List(25);
+  // Un caractere '1' en tete encode explicitement un octet 0x00. L'ancienne
+  // implementation convertissait directement le BigInt dans 25 octets et
+  // perdait cette information, ce qui rendait certaines adresses non
+  // canoniques acceptables (par exemple un '1' ajoute devant une adresse).
+  final reversed = <int>[];
   var value = number;
   final mask = BigInt.from(0xff);
-  for (var i = 24; i >= 0; i--) {
-    bytes[i] = (value & mask).toInt();
+  while (value > BigInt.zero) {
+    reversed.add((value & mask).toInt());
     value = value >> 8;
   }
-  if (value != BigInt.zero) {
+
+  final decoded = Uint8List(leadingZeroes + reversed.length);
+  for (var i = 0; i < reversed.length; i++) {
+    decoded[decoded.length - 1 - i] = reversed[i];
+  }
+
+  // Base58Check P2PKH/P2SH = 1 octet version + 20 octets payload + 4 checksum.
+  if (decoded.length != 25) {
     return const AddressCheck(
       valid: false,
-      message: 'Adresse trop longue pour etre valide.',
+      message: 'Adresse Base58 non canonique ou de longueur decodee invalide.',
     );
   }
 
-  final body = bytes.sublist(0, 21);
-  final checksum = bytes.sublist(21);
+  final body = decoded.sublist(0, 21);
+  final checksum = decoded.sublist(21);
   final expected = sha256d(body).sublist(0, 4);
   for (var i = 0; i < 4; i++) {
     if (checksum[i] != expected[i]) {

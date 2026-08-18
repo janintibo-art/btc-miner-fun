@@ -4,8 +4,8 @@ import 'dart:io';
 
 /// Le cours du bitcoin et l'etat du reseau, recuperes sur des API publiques.
 ///
-/// Aucune cle d'API, aucune inscription, aucune donnee personnelle envoyee :
-/// ce sont de simples requetes de lecture.
+/// Aucune cle d'API ni information secrete n'est envoyee. Comme pour toute
+/// requete Internet, le fournisseur voit toutefois l'adresse IP du client.
 class MarketData {
   const MarketData({
     required this.eurPerBtc,
@@ -65,7 +65,7 @@ Future<dynamic> fetchJson(String url) async {
   try {
     final request = await client.getUrl(Uri.parse(url)).timeout(kHttpTimeout);
     request.headers.set(HttpHeaders.acceptHeader, 'application/json');
-    request.headers.set(HttpHeaders.userAgentHeader, 'btc-miner-fun/0.10');
+    request.headers.set(HttpHeaders.userAgentHeader, 'btc-miner-fun/0.11');
     final response = await request.close().timeout(kHttpTimeout);
     if (response.statusCode != 200) {
       throw HttpException('reponse ${response.statusCode}');

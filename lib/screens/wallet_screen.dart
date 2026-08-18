@@ -216,7 +216,9 @@ class _WalletScreenState extends State<WalletScreen> {
                   SizedBox(
                     width: double.infinity,
                     child: OutlinedButton.icon(
-                      onPressed: m.balanceLoading ? null : m.refreshBalance,
+                      onPressed: m.balanceLoading
+                          ? null
+                          : () => m.refreshBalance(_controller.text),
                       style: OutlinedButton.styleFrom(
                         foregroundColor: AppColors.amber,
                         side: const BorderSide(color: AppColors.line),
@@ -228,7 +230,15 @@ class _WalletScreenState extends State<WalletScreen> {
                           : 'Consulter le solde'),
                     ),
                   ),
-                  if (m.balance != null) ...[
+                  if (m.balanceError != null) ...[
+                    const SizedBox(height: 12),
+                    Text(
+                      m.balanceError!,
+                      style: mono(size: 12, color: AppColors.coral),
+                    ),
+                  ],
+                  if (m.balance != null &&
+                      m.balance!.address == _controller.text.trim()) ...[
                     const SizedBox(height: 12),
                     Text(
                       m.balance!.isEmpty

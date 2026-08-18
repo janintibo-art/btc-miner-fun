@@ -21,11 +21,11 @@ class ForegroundService {
   }) async {
     if (!isSupported) return false;
     try {
-      await _channel.invokeMethod<bool>('start', {
-        'title': title,
-        'text': text,
-      });
-      return true;
+      return await _channel.invokeMethod<bool>('start', {
+            'title': title,
+            'text': text,
+          }) ??
+          false;
     } catch (_) {
       return false;
     }

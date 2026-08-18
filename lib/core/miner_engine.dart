@@ -85,11 +85,18 @@ class MinerEngine {
       }
     });
 
-    for (var i = 0; i < _workerCount; i++) {
-      _isolates.add(
-          await Isolate.spawn(_minerEntryPoint, [rx.sendPort, i, _mode.index]));
+    try {
+      for (var i = 0; i < _workerCount; i++) {
+        _isolates.add(
+            await Isolate.spawn(_minerEntryPoint, [rx.sendPort, i, _mode.index]));
+      }
+      await ready.future.timeout(const Duration(seconds: 15));
+    } catch (_) {
+      // Ne jamais laisser des isolates partiellement demarres si l'un d'eux
+      // echoue ou n'envoie pas son message de disponibilite.
+      await stop();
+      rethrow;
     }
-    await ready.future;
   }
 
   Future<void> setWork(WorkPackage work) async {
@@ -187,9 +194,9 @@ void _minerEntryPoint(List<dynamic> args) {
             // presque toujours a condamner la tentative, sans rien serialiser.
             final head = _swap32(fast.hashNonce(nonce));
             if (head < targetHead) {
-              hash = Uint8List.fromList(fast.digest());
+              hash = fast.digest();
             } else if (head == targetHead) {
-              final candidate = Uint8List.fromList(fast.digest());
+              final candidate = fast.digest();
               if (hashMeetsTarget(candidate, t)) hash = candidate;
             }
             break;
@@ -198,7 +205,7 @@ void _minerEntryPoint(List<dynamic> args) {
             h[77] = (nonce >> 8) & 0xff;
             h[78] = (nonce >> 16) & 0xff;
             h[79] = (nonce >> 24) & 0xff;
-            final candidate = Uint8List.fromList(fast.doubleHashFull(h));
+            final candidate = fast.doubleHashFull(h);
             if (hashMeetsTarget(candidate, t)) hash = candidate;
             break;
           case HashMode.compatible:
@@ -220,7 +227,9 @@ void _minerEntryPoint(List<dynamic> args) {
             'extranonce2': extranonce2,
             'ntime': nTime,
             'nonce': nonce,
-            'hash': hash,
+            // Le moteur rapide reutilise ses buffers : ne copier que lorsqu'une
+            // vraie part est trouvee, jamais a chaque tentative.
+            'hash': Uint8List.fromList(hash),
           });
         }
         nonce = walker?.next() ?? ((nonce + stride) & 0xFFFFFFFF);
@@ -228,9 +237,15 @@ void _minerEntryPoint(List<dynamic> args) {
 
       if (intensity < 100) {
         final elapsed = DateTime.now().microsecondsSinceEpoch - batchStart;
-        final rest = (elapsed * (100 - intensity) / intensity).round();
-        await Future<void>.delayed(
-            Duration(microseconds: rest.clamp(0, 400000)));
+        var remaining = (elapsed * (100 - intensity) / intensity).round();
+        // Ne pas plafonner artificiellement la pause : sur un appareil lent,
+        // cela faisait depasser largement l'intensite choisie. Les pauses sont
+        // decoupees pour rester reactif a un nouveau job ou a un arret.
+        while (remaining > 0 && running && identical(header, h)) {
+          final slice = remaining > 100000 ? 100000 : remaining;
+          await Future<void>.delayed(Duration(microseconds: slice));
+          remaining -= slice;
+        }
       }
 
       final now = DateTime.now().millisecondsSinceEpoch;

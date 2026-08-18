@@ -81,4 +81,38 @@ void main() {
       expect(r.message, contains('Saisis'));
     });
   });
+
+  group('Cas limites Base58Check et BIP 350', () {
+    test('un 1 ajoute devant une adresse Base58 valide est refuse', () {
+      final r =
+          checkBitcoinAddress('11A1zP1eP5QGefi2DMPTfTL5SLmv7DivfNa');
+      expect(r.valid, isFalse);
+    });
+
+    test('une adresse SegWit v16 Bech32m officielle est acceptee', () {
+      final r = checkBitcoinAddress('BC1SW50QGDZ25J');
+      expect(r.valid, isTrue, reason: r.message);
+      expect(r.type, 'SegWit version 16');
+    });
+
+    test('une version SegWit superieure a 16 est refusee', () {
+      final r = checkBitcoinAddress(
+          'BC130XLXVLHEMJA6C4DQV22UAPCTQUPFHLXM9H8Z3K2E72Q4K9HCZ7VQ7ZWS8R');
+      expect(r.valid, isFalse);
+      expect(r.message, contains('0 a 16'));
+    });
+
+    test('une adresse v1 encodee en Bech32 au lieu de Bech32m est refusee', () {
+      final r = checkBitcoinAddress(
+          'bc1p0xlxvlhemja6c4dqv22uapctqupfhlxm9h8z3k2e72q4k9hcz7vqh2y7hd');
+      expect(r.valid, isFalse);
+      expect(r.message.toLowerCase(), contains('bech32m'));
+    });
+
+    test('une section de donnees vide est refusee sans exception', () {
+      final r = checkBitcoinAddress('bc1gmk9yu');
+      expect(r.valid, isFalse);
+    });
+  });
+
 }

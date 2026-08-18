@@ -90,8 +90,9 @@ WalletBalance parseAddressStats(String address, Map<String, dynamic> json) {
 }
 
 class WalletWatch {
-  /// Interroge un explorateur public. Aucune donnee n'est envoyee : l'adresse
-  /// fait partie de l'URL, et elle est deja publique par nature.
+  /// Interroge un explorateur public. L'adresse Bitcoin saisie est transmise
+  /// a mempool.space via HTTPS ; aucune cle privee ni phrase secrete ne l'est.
+  /// L'explorateur peut donc techniquement associer la requete a l'adresse IP.
   static Future<WalletBalance> fetch(String address) async {
     final json = await fetchJson('https://mempool.space/api/address/$address');
     if (json is! Map<String, dynamic>) {

@@ -74,6 +74,11 @@ gestionnaire de fichiers.
 
 ## Etat du projet
 
+Version 0.12.0 : integration d'une revue externe du code (voir
+`docs/REVUE_V12.md`), robustesse du protocole Stratum, validation stricte des
+adresses, service Android en `specialUse`.
+
+
 Etape 10 terminee : suivi du solde de l'adresse en lecture seule, sans aucune
 cle privee dans l'application.
 
@@ -87,3 +92,24 @@ Etape 7 terminee : trois strategies d'exploration des nonces, dont une marche
 signature propre a chaque utilisateur, verifiee sans repetition ni
 chevauchement entre coeurs.
 Voir `docs/ROADMAP.md` pour la suite.
+
+## Durcissement v12
+
+La v12 corrige plusieurs cas limites trouves lors d'une revue approfondie :
+
+- presets verifies : `public-pool.io:21496` (solo, sans commission), `solo.ckpool.org:3333` (solo) et `stratum.ckpool.org:3333` (partage) ;
+- arret complet du moteur, wakelock, socket et service Android apres un refus du
+  pool ou l'abandon des reconnexions ;
+- application de `mining.set_difficulty` et `mining.set_extranonce` au prochain
+  job Stratum, conformement au comportement attendu de Stratum V1 ;
+- validation Base58Check canonique et validation BIP 350 complete (versions 0 a
+  16, Bech32 pour v0, Bech32m pour v1-v16) ;
+- correction de la synchronisation de l'adresse entre l'assistant portefeuille
+  et l'ecran Reglages, et consultation du solde de l'adresse reellement saisie ;
+- service Android `specialUse`, `START_NOT_STICKY` et mise a jour de notification
+  sans redemarrer le foreground service ;
+- suppression d'allocations inutiles dans les moteurs SHA-256 maison/midstate ;
+- intensite plus fidele sur les appareils lents ;
+- totaux "Depuis le debut" persistants meme lorsque seules les 50 dernieres
+  sessions sont conservees a l'ecran ;
+- `flutter analyze` ajoute a la CI avant les tests.
