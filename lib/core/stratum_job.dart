@@ -116,6 +116,9 @@ class JobSnapshot {
     required this.extranonce1,
     required this.extranonce2,
     required this.targetHex,
+    required this.headerHex,
+    required this.coinb1,
+    required this.coinb2,
     required this.difficulty,
     required this.transactionsCount,
     required this.receivedAt,
@@ -130,6 +133,12 @@ class JobSnapshot {
   final String extranonce1;
   final String extranonce2;
   final String targetHex;
+
+  /// Les 80 octets de l'en-tete, nonce a zero : la matiere du decodeur.
+  final String headerHex;
+
+  final String coinb1;
+  final String coinb2;
   final double difficulty;
   final int transactionsCount;
   final DateTime receivedAt;

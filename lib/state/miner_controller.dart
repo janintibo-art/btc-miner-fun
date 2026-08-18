@@ -8,6 +8,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import '../core/address_validator.dart';
 import '../core/bitcoin_utils.dart';
+import '../core/coinbase_decoder.dart';
 import '../core/benchmark.dart';
 import '../core/foreground_service.dart';
 import '../core/hash_mode.dart';
@@ -107,9 +108,31 @@ class MinerController extends ChangeNotifier {
   bool balanceLoading = false;
   String? balanceError;
   bool benchmarkRunning = false;
+
+  /// Journal brut du protocole : (sortant, horodatage, ligne JSON).
+  final List<({bool outgoing, DateTime at, String line})> rawMessages = [];
+
+  /// Tentatives remarquables, meme insuffisantes pour le pool.
+  final List<({double difficulty, int nonce, DateTime at})> sightings = [];
+
+  /// Repartition des trouvailles par palier de difficulte (log2).
+  final Map<int, int> sightingHistogram = <int, int>{};
+
+  int observeBits = 24;
+  int currentNonce = 0;
+  int hashesOnCurrentJob = 0;
+  double lifetimeBestDifficulty = 0;
+  final Set<int> milestonesReached = <int>{};
+  int? lastMilestone;
+  DecodedCoinbase? coinbase;
   BenchmarkResult? benchmark;
 
   int get pendingShares => _pendingShares.length;
+
+  /// Part de l'espace des nonces couverte sur le travail en cours. Le total
+  /// theorique est de 2^32, soit 4 294 967 296 possibilites par extranonce.
+  double get nonceSpaceCovered =>
+      (hashesOnCurrentJob / 4294967296).clamp(0.0, 1.0);
 
   bool get isBusy => status != MinerStatus.stopped && status != MinerStatus.error;
 
@@ -144,6 +167,12 @@ class MinerController extends ChangeNotifier {
     autoStopMinutes = p.getInt('autoStopMinutes') ?? 0;
     keepScreenOn = p.getBool('keepScreenOn') ?? false;
     hashMode = HashModeInfo.fromName(p.getString('hashMode'));
+    observeBits = p.getInt('observeBits') ?? 24;
+    lifetimeBestDifficulty = p.getDouble('lifetimeBest') ?? 0;
+    milestonesReached.addAll(
+        (p.getStringList('milestones') ?? const <String>[])
+            .map(int.tryParse)
+            .whereType<int>());
     nonceStrategy = NonceStrategyInfo.fromName(p.getString('nonceStrategy'));
     signaturePhrase = p.getString('signaturePhrase') ?? '';
     market = MarketData.tryDecode(p.getString('market'));
@@ -172,6 +201,7 @@ class MinerController extends ChangeNotifier {
 
     _engine.onStats = (hps, total) {
       hashrate = hps;
+      hashesOnCurrentJob += (total - totalHashes).clamp(0, 1 << 30);
       totalHashes = total;
       if (status == MinerStatus.waitingJob && hps > 0) {
         status = MinerStatus.mining;
@@ -187,6 +217,8 @@ class MinerController extends ChangeNotifier {
       }
     };
     _engine.onShare = _onShareFound;
+    _engine.onNonce = (nonce) => currentNonce = nonce;
+    _engine.onSighting = _onSighting;
 
     log(wallet.isEmpty
         ? 'Renseigne ton adresse Bitcoin dans Reglages pour commencer.'
@@ -206,6 +238,7 @@ class MinerController extends ChangeNotifier {
     await p.setInt('autoStopMinutes', autoStopMinutes);
     await p.setBool('keepScreenOn', keepScreenOn);
     await p.setString('hashMode', hashMode.name);
+    await p.setInt('observeBits', observeBits);
     await p.setString('nonceStrategy', nonceStrategy.name);
     await p.setString('signaturePhrase', signaturePhrase);
     if (balance != null && balance!.address != wallet.trim()) {
@@ -274,6 +307,11 @@ class MinerController extends ChangeNotifier {
           'permutation complete des 4 294 967 296 nonces.');
     }
     _engine.setIntensity(intensity);
+    _engine.setObserveBits(observeBits);
+    rawMessages.clear();
+    sightings.clear();
+    sightingHistogram.clear();
+    hashesOnCurrentJob = 0;
     if (keepScreenOn) _setWakelock(true);
 
     if (ForegroundService.isSupported) {
@@ -565,10 +603,21 @@ class MinerController extends ChangeNotifier {
       extranonce1: _extranonce1,
       extranonce2: en2,
       targetHex: bytesToHex(target),
+      headerHex: bytesToHex(header),
+      coinb1: j.coinb1,
+      coinb2: j.coinb2,
       difficulty: _activeJobDifficulty,
       transactionsCount: j.merkleBranch.length,
       receivedAt: DateTime.now(),
     );
+
+    coinbase = decodeCoinbase(
+      coinb1: j.coinb1,
+      extranonce1: _extranonce1,
+      extranonce2: en2,
+      coinb2: j.coinb2,
+    );
+    hashesOnCurrentJob = 0;
 
     _engine.setWork(WorkPackage(
       jobId: j.jobId,
@@ -590,6 +639,7 @@ class MinerController extends ChangeNotifier {
     if (share.difficulty > bestDifficulty) {
       bestDifficulty = share.difficulty;
     }
+    _checkMilestones(share.difficulty);
     final client = _client;
     if (client == null || !client.isConnected || !_authorized) {
       _pendingShares.add(share);
@@ -778,6 +828,48 @@ class MinerController extends ChangeNotifier {
     await p.setString('market', data.encode());
     log('Cours fixe manuellement a ${formatEuros(eurPerBtc)}.');
     notifyListeners();
+  }
+
+  /// Paliers qui declenchent une celebration quand la difficulte les franchit.
+  static const List<int> kMilestones = [
+    1, 10, 100, 1000, 10000, 100000, 1000000, 10000000
+  ];
+
+  void setObserveBits(int bits) {
+    observeBits = bits.clamp(8, 40);
+    _engine.setObserveBits(observeBits);
+    notifyListeners();
+  }
+
+  void _onSighting(double difficulty, int nonce) {
+    sightings.insert(0, (difficulty: difficulty, nonce: nonce, at: DateTime.now()));
+    if (sightings.length > 60) sightings.removeLast();
+    final bucket = difficulty <= 1 ? 0 : (log(difficulty) / ln2).floor();
+    sightingHistogram[bucket] = (sightingHistogram[bucket] ?? 0) + 1;
+    notifyListeners();
+  }
+
+  /// Franchissement d'un palier : c'est la seule bonne nouvelle qu'un mineur
+  /// de telephone recevra jamais, autant la fêter.
+  void _checkMilestones(double difficulty) {
+    for (final milestone in kMilestones) {
+      if (difficulty >= milestone && !milestonesReached.contains(milestone)) {
+        milestonesReached.add(milestone);
+        lastMilestone = milestone;
+        log('Palier franchi : difficulte $milestone atteinte.');
+        SharedPreferences.getInstance().then((p) => p.setStringList(
+            'milestones', milestonesReached.map((m) => m.toString()).toList()));
+      }
+    }
+    if (difficulty > lifetimeBestDifficulty) {
+      lifetimeBestDifficulty = difficulty;
+      SharedPreferences.getInstance()
+          .then((p) => p.setDouble('lifetimeBest', difficulty));
+    }
+  }
+
+  void clearMilestoneFlag() {
+    lastMilestone = null;
   }
 
   void setHashMode(HashMode value) {

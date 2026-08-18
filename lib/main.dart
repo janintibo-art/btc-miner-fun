@@ -6,6 +6,7 @@ import 'screens/config_screen.dart';
 import 'screens/converter_screen.dart';
 import 'screens/dashboard_screen.dart';
 import 'screens/history_screen.dart';
+import 'screens/lab_screen.dart';
 import 'screens/tutorial_screen.dart';
 import 'state/miner_controller.dart';
 
@@ -43,6 +44,7 @@ class _RootShellState extends State<RootShell> {
 
   static const _titles = [
     'Minage',
+    'Labo',
     'Historique',
     'Convertir',
     'Reglages',
@@ -83,6 +85,7 @@ class _RootShellState extends State<RootShell> {
           index: _index,
           children: const [
             DashboardScreen(),
+            LabScreen(),
             HistoryScreen(),
             ConverterScreen(),
             ConfigScreen(),
@@ -100,7 +103,7 @@ class _RootShellState extends State<RootShell> {
             backgroundColor: Colors.transparent,
             indicatorColor: AppColors.amber.withOpacity(0.18),
             labelTextStyle: WidgetStateProperty.all(
-              const TextStyle(fontSize: 11, fontWeight: FontWeight.w600),
+              const TextStyle(fontSize: 9.5, fontWeight: FontWeight.w600),
             ),
           ),
           child: NavigationBar(
@@ -113,15 +116,20 @@ class _RootShellState extends State<RootShell> {
                   selectedIcon: Icon(Icons.bolt_rounded, color: AppColors.amber),
                   label: 'Minage'),
               NavigationDestination(
+                  icon: Icon(Icons.science_outlined),
+                  selectedIcon:
+                      Icon(Icons.science_rounded, color: AppColors.amber),
+                  label: 'Labo'),
+              NavigationDestination(
                   icon: Icon(Icons.history_outlined),
                   selectedIcon:
                       Icon(Icons.history_rounded, color: AppColors.amber),
-                  label: 'Historique'),
+                  label: 'Sessions'),
               NavigationDestination(
                   icon: Icon(Icons.euro_outlined),
                   selectedIcon:
                       Icon(Icons.euro_rounded, color: AppColors.amber),
-                  label: 'Convertir'),
+                  label: 'Euros'),
               NavigationDestination(
                   icon: Icon(Icons.tune_outlined),
                   selectedIcon: Icon(Icons.tune_rounded, color: AppColors.amber),

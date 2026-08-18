@@ -251,6 +251,25 @@ const _chapters = <_ChapterData>[
     Icons.visibility_rounded,
   ),
   _ChapterData(
+    'Le labo : tout observer',
+    'L\'onglet Labo montre le minage sans filtre.\n\n'
+        'Les 80 octets : l\'en-tete du travail en cours, colore champ par '
+        'champ. Touche une couleur pour savoir ce qu\'elle contient. Le nonce '
+        'defile en direct.\n\n'
+        'La coinbase : la transaction que tu fabriques et qui te paierait. '
+        'L\'application y lit la hauteur du bloc, la recompense convertie en '
+        'euros, et le message que le pool laisse dans ses blocs.\n\n'
+        'Le seuil d\'observation : un curseur qui decide a partir de quand une '
+        'tentative est affichee. Il ne change rien au minage, mais il rend le '
+        'hasard visible. L\'histogramme montre alors que chaque palier de '
+        'difficulte apparait deux fois moins souvent que le precedent.\n\n'
+        'La console : les lignes JSON echangees avec le pool, telles quelles.\n\n'
+        'Le banc d\'avalanche : un bit change dans l\'entree, et environ 128 '
+        'des 256 bits du hash changent. C\'est la demonstration en une seconde '
+        'qu\'aucun raccourci n\'existe.',
+    Icons.science_rounded,
+  ),
+  _ChapterData(
     'Compiler l\'APK et le .exe',
     'Le projet est compile par GitHub Actions, pas par ton telephone. A chaque '
         'envoi de code sur la branche main, GitHub construit :\n\n'

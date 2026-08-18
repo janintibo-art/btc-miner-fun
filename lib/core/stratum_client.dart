@@ -16,6 +16,10 @@ class StratumClient {
   bool _closedByUser = false;
 
   void Function(String line)? onLog;
+
+  /// Chaque ligne JSON echangee avec le pool, telle quelle. Sert la console du
+  /// labo : voir le protocole reel plutot qu'un resume.
+  void Function(bool outgoing, String line)? onRaw;
   void Function(String extranonce1, int extranonce2Size)? onSubscribed;
   void Function(String extranonce1, int extranonce2Size)? onExtranonce;
   void Function(bool authorized)? onAuthorized;
@@ -101,7 +105,9 @@ class StratumClient {
     final socket = _socket;
     if (socket == null) return;
     try {
-      socket.write('${jsonEncode(payload)}\n');
+      final line = jsonEncode(payload);
+    onRaw?.call(true, line);
+    socket.write('$line\n');
     } catch (e) {
       _notifyDisconnected('Ecriture vers le pool impossible : $e');
       _cleanup();
@@ -110,6 +116,7 @@ class StratumClient {
 
   void _handleLine(String line) {
     if (line.trim().isEmpty) return;
+    onRaw?.call(false, line.trim());
 
     Map<String, dynamic> msg;
     try {

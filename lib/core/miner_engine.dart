@@ -22,10 +22,17 @@ class MinerEngine {
   int _intensity = 100;
   HashMode _mode = HashMode.midstate;
   NonceStrategy _strategy = NonceStrategy.signature;
+  int _observeBits = 24;
   NonceSignature _signature = NonceSignature.fromPhrase('btc-miner-fun');
 
   void Function(double hashrate, int totalHashes)? onStats;
   void Function(FoundShare share)? onShare;
+
+  /// Tentative remarquable mais insuffisante pour le pool : (difficulte, nonce).
+  void Function(double difficulty, int nonce)? onSighting;
+
+  /// Dernier nonce essaye, pour l'affichage en direct du decodeur d'en-tete.
+  void Function(int nonce)? onNonce;
 
   int get workerCount => _workerCount;
   bool get isStarted => _isolates.isNotEmpty;
@@ -58,14 +65,21 @@ class MinerEngine {
         case 'hello':
           _ports[index] = msg['port'] as SendPort;
           _ports[index]!.send({'type': 'intensity', 'value': _intensity});
+          _ports[index]!.send({'type': 'observe', 'value': _observeBits});
           _ports[index]!.send({'type': 'start'});
           if (_ports.length == _workerCount && !ready.isCompleted) {
             ready.complete();
           }
           break;
+        case 'sighting':
+          onSighting?.call(
+              (msg['difficulty'] as num).toDouble(), msg['nonce'] as int);
+          break;
         case 'stats':
           _totals[index] = msg['total'] as int;
           _rates[index] = (msg['hps'] as num).toDouble();
+          final nonce = msg['nonce'];
+          if (nonce is int) onNonce?.call(nonce);
           onStats?.call(
             _rates.values.fold(0.0, (a, b) => a + b),
             _totals.values.fold(0, (a, b) => a + b),
@@ -114,6 +128,16 @@ class MinerEngine {
   /// Intensite de 10 a 100 % : en dessous de 100, chaque isolate marque une
   /// pause proportionnelle apres chaque lot de hachages. Moins de chaleur,
   /// moins de batterie.
+  /// Seuil d'observation : nombre de bits a zero a partir duquel une tentative
+  /// est signalee a l'interface, meme si elle ne vaut pas une part. C'est ce
+  /// qui rend le hasard visible sans rien simuler.
+  void setObserveBits(int bits) {
+    _observeBits = bits.clamp(8, 40);
+    for (final p in _ports.values) {
+      p.send({'type': 'observe', 'value': _observeBits});
+    }
+  }
+
   void setIntensity(int percent) {
     _intensity = percent.clamp(10, 100);
     for (final p in _ports.values) {
@@ -167,6 +191,9 @@ void _minerEntryPoint(List<dynamic> args) {
   NonceWalker? walker;
   var intensity = 100;
   var targetHead = 0;
+  var observeBits = 24;
+  var observeHead = 0xFFFFFFFF >> 24;
+  var lastSighting = 0;
   var totalHashes = 0;
   var running = false;
   var looping = false;
@@ -193,6 +220,18 @@ void _minerEntryPoint(List<dynamic> args) {
             // Rejet precoce : les 4 premiers octets du hash retourne suffisent
             // presque toujours a condamner la tentative, sans rien serialiser.
             final head = _swap32(fast.hashNonce(nonce));
+            if (head <= observeHead) {
+              final now = DateTime.now().millisecondsSinceEpoch;
+              if (now - lastSighting > 250) {
+                lastSighting = now;
+                mainPort.send({
+                  'type': 'sighting',
+                  'index': index,
+                  'nonce': nonce,
+                  'difficulty': head == 0 ? 4294967296.0 : 4294967296.0 / head,
+                });
+              }
+            }
             if (head < targetHead) {
               hash = fast.digest();
             } else if (head == targetHead) {
@@ -253,6 +292,7 @@ void _minerEntryPoint(List<dynamic> args) {
         mainPort.send({
           'type': 'stats',
           'index': index,
+          'nonce': nonce,
           'total': totalHashes,
           'hps': (totalHashes - lastHashes) * 1000 / (now - lastTick),
         });
@@ -293,6 +333,10 @@ void _minerEntryPoint(List<dynamic> args) {
       case 'start':
         running = true;
         if (!looping) loop();
+        break;
+      case 'observe':
+        observeBits = (msg['value'] as int).clamp(8, 40);
+        observeHead = observeBits >= 32 ? 0 : (0xFFFFFFFF >> observeBits);
         break;
       case 'intensity':
         intensity = (msg['value'] as int).clamp(10, 100);

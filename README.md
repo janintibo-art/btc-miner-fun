@@ -76,6 +76,11 @@ gestionnaire de fichiers.
 
 ## Etat du projet
 
+Version 0.16.0 : onglet **Labo** - decodeur d'en-tete interactif, lecture de la
+transaction coinbase, seuil d'observation, console Stratum brute et banc
+d'avalanche.
+
+
 Version 0.14.0 (build 14), basee sur la v13 : portefeuille Bitcoin local non-custodial,
 phrase BIP39 creee/restauree sur l'appareil, premiere adresse Native SegWit BIP84
 (`m/84'/0'/0'/0/0`) et coffre chiffre avec le stockage securise de la plateforme.

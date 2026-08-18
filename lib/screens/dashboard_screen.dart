@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 
 import '../app_theme.dart';
@@ -29,6 +30,9 @@ class DashboardScreen extends StatelessWidget {
         const SizedBox(height: 22),
         const SectionLabel('Compteurs'),
         _StatsGrid(m: m),
+        const SizedBox(height: 22),
+        const SectionLabel('Records'),
+        _RecordsCard(m: m),
         const SizedBox(height: 22),
         const SectionLabel('Le bloc sur lequel tu travailles'),
         JobInspector(job: m.job),
@@ -125,6 +129,96 @@ class _StartButton extends StatelessWidget {
           running ? 'Arreter le minage' : 'Lancer le minage',
           style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
         ),
+      ),
+    );
+  }
+}
+
+/// Les paliers de difficulte franchis : la seule bonne nouvelle qu'un mineur
+/// de telephone recevra, autant la rendre visible.
+class _RecordsCard extends StatefulWidget {
+  const _RecordsCard({required this.m});
+  final MinerController m;
+
+  @override
+  State<_RecordsCard> createState() => _RecordsCardState();
+}
+
+class _RecordsCardState extends State<_RecordsCard> {
+  @override
+  Widget build(BuildContext context) {
+    final m = widget.m;
+
+    // Une vibration quand un palier tombe, puis on desamorce le drapeau.
+    final milestone = m.lastMilestone;
+    if (milestone != null) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        HapticFeedback.mediumImpact();
+        m.clearMilestoneFlag();
+      });
+    }
+
+    return AppCard(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Expanded(child: Text('MEILLEURE DIFFICULTE DE TOUJOURS', style: label())),
+              if (milestone != null)
+                const Icon(Icons.celebration_rounded,
+                    color: AppColors.amber, size: 18),
+            ],
+          ),
+          const SizedBox(height: 8),
+          Text(
+            m.lifetimeBestDifficulty == 0
+                ? '-'
+                : m.lifetimeBestDifficulty.toStringAsFixed(2),
+            style: mono(size: 26, weight: FontWeight.w700, spacing: -1),
+          ),
+          const SizedBox(height: 14),
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: [
+              for (final step in MinerController.kMilestones)
+                Container(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                  decoration: BoxDecoration(
+                    color: m.milestonesReached.contains(step)
+                        ? AppColors.amber.withOpacity(0.18)
+                        : AppColors.panelHigh,
+                    borderRadius: BorderRadius.circular(20),
+                    border: Border.all(
+                      color: m.milestonesReached.contains(step)
+                          ? AppColors.amber
+                          : AppColors.line,
+                    ),
+                  ),
+                  child: Text(
+                    step >= 1000000
+                        ? '${step ~/ 1000000}M'
+                        : (step >= 1000 ? '${step ~/ 1000}k' : '$step'),
+                    style: mono(
+                      size: 11.5,
+                      weight: FontWeight.w700,
+                      color: m.milestonesReached.contains(step)
+                          ? AppColors.amber
+                          : AppColors.muted,
+                    ),
+                  ),
+                ),
+            ],
+          ),
+          const SizedBox(height: 10),
+          Text(
+            'Chaque palier est dix fois plus dur que le precedent. Le reseau, '
+            'lui, exige des dizaines de milliers de milliards.',
+            style: mono(size: 10.5, color: AppColors.line),
+          ),
+        ],
       ),
     );
   }
