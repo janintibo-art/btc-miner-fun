@@ -13,6 +13,7 @@ import '../core/foreground_service.dart';
 import '../core/hash_mode.dart';
 import '../core/nonce_walker.dart';
 import '../core/price_service.dart';
+import '../core/wallet_watch.dart';
 import '../core/miner_engine.dart';
 import '../core/session.dart';
 import '../core/stratum_client.dart';
@@ -86,6 +87,9 @@ class MinerController extends ChangeNotifier {
   Timer? _autoStopTimer;
   MarketData? market;
   bool priceLoading = false;
+  WalletBalance? balance;
+  bool balanceLoading = false;
+  String? balanceError;
   bool benchmarkRunning = false;
   BenchmarkResult? benchmark;
 
@@ -127,6 +131,8 @@ class MinerController extends ChangeNotifier {
     nonceStrategy = NonceStrategyInfo.fromName(p.getString('nonceStrategy'));
     signaturePhrase = p.getString('signaturePhrase') ?? '';
     market = MarketData.tryDecode(p.getString('market'));
+    final cached = WalletBalance.tryDecode(p.getString('balance'));
+    if (cached != null && cached.address == wallet.trim()) balance = cached;
     sessions.addAll(MiningSession.decodeList(p.getString('sessions') ?? '[]'));
 
     _engine.onStats = (hps, total) {
@@ -530,6 +536,35 @@ class MinerController extends ChangeNotifier {
       log('Cours indisponible : verifie ta connexion.');
     }
     priceLoading = false;
+    notifyListeners();
+  }
+
+  /// Consulte le solde de l'adresse configuree. Lecture seule : aucune cle
+  /// n'existe dans cette application, aucune depense n'est possible.
+  Future<void> refreshBalance() async {
+    final address = wallet.trim();
+    if (address.isEmpty || !walletLooksValid) {
+      balanceError = 'Configure d\'abord une adresse valide.';
+      notifyListeners();
+      return;
+    }
+    if (balanceLoading) return;
+    balanceLoading = true;
+    balanceError = null;
+    notifyListeners();
+    try {
+      final result = await WalletWatch.fetch(address);
+      balance = result;
+      final p = await SharedPreferences.getInstance();
+      await p.setString('balance', result.encode());
+      log(result.isEmpty
+          ? 'Adresse consultee : aucun mouvement pour l\'instant.'
+          : 'Solde : ${formatBtc(result.totalBtc)} bitcoin.');
+    } catch (e) {
+      balanceError = 'Consultation impossible : verifie ta connexion.';
+      log('Solde indisponible : $e');
+    }
+    balanceLoading = false;
     notifyListeners();
   }
 

@@ -57,15 +57,33 @@ class MarketData {
   String encode() => jsonEncode(toJson());
 }
 
-class PriceService {
-  static const Duration _timeout = Duration(seconds: 12);
+const Duration kHttpTimeout = Duration(seconds: 12);
 
+/// Petit client JSON partage : lecture seule, sans cle d'API.
+Future<dynamic> fetchJson(String url) async {
+  final client = HttpClient()..connectionTimeout = kHttpTimeout;
+  try {
+    final request = await client.getUrl(Uri.parse(url)).timeout(kHttpTimeout);
+    request.headers.set(HttpHeaders.acceptHeader, 'application/json');
+    request.headers.set(HttpHeaders.userAgentHeader, 'btc-miner-fun/0.10');
+    final response = await request.close().timeout(kHttpTimeout);
+    if (response.statusCode != 200) {
+      throw HttpException('reponse ${response.statusCode}');
+    }
+    final body = await response.transform(utf8.decoder).join();
+    return jsonDecode(body);
+  } finally {
+    client.close(force: true);
+  }
+}
+
+class PriceService {
   static Future<MarketData> fetch() async {
-    final price = await _getJson(
+    final price = _asMap(await fetchJson(
       'https://api.coingecko.com/api/v3/simple/price'
       '?ids=bitcoin&vs_currencies=eur,usd',
-    );
-    final bitcoin = price['bitcoin'] as Map<String, dynamic>;
+    ));
+    final bitcoin = _asMap(price['bitcoin']);
     final eur = (bitcoin['eur'] as num).toDouble();
     final usd = (bitcoin['usd'] as num?)?.toDouble() ?? 0;
 
@@ -74,9 +92,9 @@ class PriceService {
     double? hashrate;
     double? difficulty;
     try {
-      final mining = await _getJson(
+      final mining = _asMap(await fetchJson(
         'https://mempool.space/api/v1/mining/hashrate/3d',
-      );
+      ));
       hashrate = (mining['currentHashrate'] as num?)?.toDouble();
       difficulty = (mining['currentDifficulty'] as num?)?.toDouble();
     } catch (_) {
@@ -91,24 +109,9 @@ class PriceService {
       difficulty: difficulty,
     );
   }
-
-  static Future<Map<String, dynamic>> _getJson(String url) async {
-    final client = HttpClient()..connectionTimeout = _timeout;
-    try {
-      final request = await client.getUrl(Uri.parse(url)).timeout(_timeout);
-      request.headers.set(HttpHeaders.acceptHeader, 'application/json');
-      request.headers.set(HttpHeaders.userAgentHeader, 'btc-miner-fun/0.8');
-      final response = await request.close().timeout(_timeout);
-      if (response.statusCode != 200) {
-        throw HttpException('reponse ${response.statusCode}');
-      }
-      final body = await response.transform(utf8.decoder).join();
-      return jsonDecode(body) as Map<String, dynamic>;
-    } finally {
-      client.close(force: true);
-    }
-  }
 }
+
+Map<String, dynamic> _asMap(dynamic value) => value as Map<String, dynamic>;
 
 /// La recompense actuelle d'un bloc, hors frais de transaction.
 /// Elle est divisee par deux tous les 210 000 blocs.

@@ -5,6 +5,7 @@ import 'package:qr_flutter/qr_flutter.dart';
 
 import '../app_theme.dart';
 import '../core/address_validator.dart';
+import '../core/bitcoin_utils.dart';
 import '../state/miner_controller.dart';
 import '../widgets/app_card.dart';
 
@@ -192,6 +193,48 @@ class _WalletScreenState extends State<WalletScreen> {
                           ),
                         ),
                       ],
+                    ),
+                  ],
+                ],
+              ),
+            ),
+            const SizedBox(height: 20),
+            AppCard(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text('SUIVRE CETTE ADRESSE', style: label()),
+                  const SizedBox(height: 10),
+                  const Text(
+                    'L\'onglet Convertir affiche le solde de ton adresse en '
+                    'consultant la chaine publique. Aucune cle n\'est stockee '
+                    'ici : l\'application peut regarder, jamais depenser.',
+                    style: TextStyle(
+                        fontSize: 12.5, height: 1.5, color: AppColors.muted),
+                  ),
+                  const SizedBox(height: 14),
+                  SizedBox(
+                    width: double.infinity,
+                    child: OutlinedButton.icon(
+                      onPressed: m.balanceLoading ? null : m.refreshBalance,
+                      style: OutlinedButton.styleFrom(
+                        foregroundColor: AppColors.amber,
+                        side: const BorderSide(color: AppColors.line),
+                        padding: const EdgeInsets.symmetric(vertical: 13),
+                      ),
+                      icon: const Icon(Icons.travel_explore_rounded, size: 18),
+                      label: Text(m.balanceLoading
+                          ? 'Consultation...'
+                          : 'Consulter le solde'),
+                    ),
+                  ),
+                  if (m.balance != null) ...[
+                    const SizedBox(height: 12),
+                    Text(
+                      m.balance!.isEmpty
+                          ? 'Aucun mouvement sur cette adresse.'
+                          : 'Solde : ${formatBtc(m.balance!.totalBtc)} bitcoin',
+                      style: mono(size: 12, color: AppColors.mint),
                     ),
                   ],
                 ],

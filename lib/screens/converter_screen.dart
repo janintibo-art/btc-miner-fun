@@ -120,6 +120,9 @@ class _ConverterScreenState extends State<ConverterScreen> {
           ),
         ),
         const SizedBox(height: 20),
+        const SectionLabel('Ton adresse'),
+        _BalanceCard(m: m),
+        const SizedBox(height: 20),
         const SectionLabel('Et ta machine, dans tout ca'),
         _EarningsCard(m: m),
         if (rate <= 0 || (market?.manual ?? false)) ...[
@@ -255,6 +258,95 @@ class _PriceCard extends StatelessWidget {
 
   static String _hhmm(DateTime d) =>
       '${d.hour.toString().padLeft(2, '0')}h${d.minute.toString().padLeft(2, '0')}';
+}
+
+class _BalanceCard extends StatelessWidget {
+  const _BalanceCard({required this.m});
+  final MinerController m;
+
+  @override
+  Widget build(BuildContext context) {
+    final balance = m.balance;
+    final rate = m.market?.eurPerBtc ?? 0;
+
+    if (m.wallet.trim().isEmpty) {
+      return AppCard(
+        child: Text(
+          'Renseigne ton adresse dans Reglages pour suivre son solde ici.',
+          style: mono(size: 12, color: AppColors.muted),
+        ),
+      );
+    }
+
+    return AppCard(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Expanded(child: Text('SOLDE DE TON ADRESSE', style: label())),
+              IconButton(
+                onPressed: m.balanceLoading ? null : m.refreshBalance,
+                icon: m.balanceLoading
+                    ? const SizedBox(
+                        width: 16,
+                        height: 16,
+                        child: CircularProgressIndicator(
+                            strokeWidth: 2, color: AppColors.amber),
+                      )
+                    : const Icon(Icons.refresh_rounded,
+                        color: AppColors.amber, size: 20),
+                padding: EdgeInsets.zero,
+                constraints: const BoxConstraints(),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          if (balance == null)
+            Text(
+              m.balanceError ??
+                  'Touche la fleche pour consulter la chaine et voir ce que ton '
+                      'adresse a recu.',
+              style: mono(size: 12, color: AppColors.muted),
+            )
+          else ...[
+            Text('${formatBtc(balance.totalBtc)} ₿',
+                style: mono(size: 26, weight: FontWeight.w700, spacing: -1)),
+            const SizedBox(height: 4),
+            Text(
+              rate > 0
+                  ? '${formatEuros(balance.totalBtc * rate)} au cours actuel'
+                  : '${formatCount(balance.totalSats)} satoshis',
+              style: mono(size: 12, color: AppColors.muted),
+            ),
+            const SizedBox(height: 14),
+            if (balance.pendingSats != 0)
+              Padding(
+                padding: const EdgeInsets.only(bottom: 8),
+                child: Text(
+                  '${formatCount(balance.pendingSats)} satoshis en attente de '
+                  'confirmation',
+                  style: mono(size: 11.5, color: AppColors.amber),
+                ),
+              ),
+            Text(
+              balance.transactionCount == 0
+                  ? 'Aucun mouvement sur cette adresse. C\'est normal : trouver '
+                      'un bloc est un evenement rarissime.'
+                  : '${balance.transactionCount} transaction(s) enregistree(s)',
+              style: mono(size: 11.5, color: AppColors.muted),
+            ),
+            const SizedBox(height: 10),
+            Text(
+              'Consultation seule, via mempool.space. Cette application ne '
+              'detient aucune cle et ne peut rien depenser.',
+              style: mono(size: 10.5, color: AppColors.line),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
 }
 
 class _EarningsCard extends StatelessWidget {

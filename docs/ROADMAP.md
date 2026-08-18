@@ -90,7 +90,18 @@
 - QR code de l'adresse et copie en un geste
 - Choix assume : l'application ne genere aucune cle privee
 
-## Etape 10 - a faire
+## Etape 10 - terminee
+
+- Consultation du solde de l'adresse configuree via mempool.space
+- Distinction entre solde confirme et mouvements en attente
+- Conversion immediate du solde en euros au cours affiche
+- Dernier solde connu conserve pour l'affichage hors ligne
+- Choix assume et documente : aucune cle privee, aucune signature de
+  transaction. Consulter ne demande que l'adresse, depenser exige la cle.
+  Pour depenser, la phrase de recuperation se saisit dans un portefeuille
+  dedie : le format BIP39 est universel.
+
+## Etape 11 - a faire
 
 - Lecture de la temperature de la batterie pour brider automatiquement
 - Bouton d'arret directement dans la notification

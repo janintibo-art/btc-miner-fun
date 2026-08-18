@@ -20,7 +20,7 @@ Interface soignee, onglet tutoriel integre, mode demo hors ligne et mode pool re
   genere a la compilation par `tool/patch_android.py`.
 - Tableau de bord : puissance de calcul, courbe 60 s, parts, meilleure difficulte, journal.
 - Ecran maintenu allume pendant le minage, icone d'application dediee.
-- Onglet guide en 15 chapitres.
+- Onglet guide en 16 chapitres.
 - **Tests automatiques** : les calculs sont verifies contre le vrai bloc 125552
   de la chaine Bitcoin avant chaque compilation.
 
@@ -43,6 +43,7 @@ btc-miner-fun/
 │   │   ├── nonce_walker.dart     Strategies d'exploration, marche signature
 │   │   ├── price_service.dart    Cours du bitcoin et etat du reseau
 │   │   ├── address_validator.dart Verification bech32 / bech32m / base58check
+│   │   ├── wallet_watch.dart     Consultation du solde, en lecture seule
 │   │   ├── benchmark.dart        Mesure comparative des trois moteurs
 │   │   ├── stratum_client.dart   Client Stratum V1 (TCP + JSON-RPC)
 │   │   └── miner_engine.dart     Boucle de hachage dans un isolate
@@ -72,6 +73,9 @@ Sur Android, autorise l'installation depuis une source inconnue pour ton
 gestionnaire de fichiers.
 
 ## Etat du projet
+
+Etape 10 terminee : suivi du solde de l'adresse en lecture seule, sans aucune
+cle privee dans l'application.
 
 Etape 9 terminee : assistant portefeuille, verification complete des adresses
 avec recalcul du code de controle, QR code de reception.

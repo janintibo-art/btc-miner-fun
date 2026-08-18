@@ -234,6 +234,22 @@ const _chapters = <_ChapterData>[
     Icons.key_rounded,
   ),
   _ChapterData(
+    'Regarder sans pouvoir toucher',
+    'Une adresse Bitcoin est publique par nature : n\'importe qui peut '
+        'consulter ce qu\'elle a recu, puisque toutes les transactions sont '
+        'inscrites dans une chaine ouverte. C\'est ce que fait l\'onglet '
+        'Convertir en interrogeant un explorateur.\n\n'
+        'Consulter et depenser sont deux choses totalement separees : la '
+        'premiere ne demande que l\'adresse, la seconde exige la cle privee. '
+        'Cette application n\'a que la premiere, et c\'est un choix : meme si '
+        'ton telephone etait compromis, il n\'y aurait rien a voler ici.\n\n'
+        'Le solde affiche distingue ce qui est inscrit dans un bloc de ce qui '
+        'attend encore une confirmation. Pour depenser, il faudra saisir ta '
+        'phrase de recuperation dans ton portefeuille : le format est '
+        'universel, tous les logiciels serieux la comprennent.',
+    Icons.visibility_rounded,
+  ),
+  _ChapterData(
     'Compiler l\'APK et le .exe',
     'Le projet est compile par GitHub Actions, pas par ton telephone. A chaque '
         'envoi de code sur la branche main, GitHub construit :\n\n'
