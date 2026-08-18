@@ -13,6 +13,7 @@ import '../core/benchmark.dart';
 import '../core/foreground_service.dart';
 import '../core/hash_mode.dart';
 import '../core/nonce_walker.dart';
+import '../core/platform_profile.dart';
 import '../core/price_service.dart';
 import '../core/wallet_watch.dart';
 import '../core/miner_engine.dart';
@@ -137,10 +138,11 @@ class MinerController extends ChangeNotifier {
   bool get isBusy => status != MinerStatus.stopped && status != MinerStatus.error;
 
   /// Nombre de coeurs disponibles sur l'appareil.
-  int get availableCores => Platform.numberOfProcessors.clamp(1, 16);
+  int get availableCores => PlatformProfile.availableCores;
 
-  /// Par defaut on garde de la marge : la moitie des coeurs, 4 au maximum.
-  int get recommendedThreads => (availableCores / 2).floor().clamp(1, 4);
+  /// La valeur conseillee depend de la machine : prudente sur telephone,
+  /// genereuse sur un ordinateur ventile.
+  int get recommendedThreads => PlatformProfile.recommendedThreads;
 
   int get effectiveThreads =>
       threads <= 0 ? recommendedThreads : threads.clamp(1, availableCores);

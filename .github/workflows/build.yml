@@ -152,6 +152,35 @@ jobs:
           echo "Dossier trouve : $RELEASE_DIR"
           mkdir -p dist
           cp -r "$RELEASE_DIR"/* dist/
+          cat > dist/LISEZMOI.txt <<'TXT'
+          BTC Miner Fun - version Windows
+          ================================
+
+          Lancement : double-clique sur BTCMinerFun.exe
+
+          Garde tous les fichiers du dossier ensemble : l'executable a besoin
+          des DLL et du dossier data qui l'accompagnent. Tu peux deplacer le
+          dossier entier ou l'on veut, mais pas l'executable tout seul.
+
+          Raccourcis clavier
+          ------------------
+            F5           demarrer ou arreter le minage
+            F11          mode veille plein ecran
+            Ctrl + 1..6  changer d'onglet
+
+          Reglages conseilles sur ordinateur
+          ----------------------------------
+          L'application propose par defaut tous les coeurs sauf un, et une
+          intensite de 100 % : un ordinateur de bureau est ventile, il n'a pas
+          les contraintes thermiques d'un telephone. Attends-toi a une
+          puissance dix a cent fois superieure a celle d'un mobile.
+
+          Windows affichera un avertissement SmartScreen au premier lancement :
+          l'executable n'est pas signe par un certificat commercial. Clique sur
+          "Informations complementaires" puis "Executer quand meme".
+          TXT
+          sed -i 's/^          //' dist/LISEZMOI.txt
+          ls -lh dist
 
       - uses: actions/upload-artifact@v4
         with:

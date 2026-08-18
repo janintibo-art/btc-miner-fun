@@ -28,6 +28,23 @@ class DashboardScreen extends StatelessWidget {
         _HashrateCard(m: m),
         const SizedBox(height: 14),
         _StartButton(m: m),
+        const SizedBox(height: 12),
+        SizedBox(
+          width: double.infinity,
+          child: OutlinedButton.icon(
+            onPressed: () => Navigator.of(context).push(
+              MaterialPageRoute<void>(
+                  builder: (_) => const ScreensaverScreen()),
+            ),
+            style: OutlinedButton.styleFrom(
+              foregroundColor: AppColors.cyan,
+              side: const BorderSide(color: AppColors.line),
+              padding: const EdgeInsets.symmetric(vertical: 13),
+            ),
+            icon: const Icon(Icons.fullscreen_rounded, size: 18),
+            label: const Text('Mode veille plein ecran'),
+          ),
+        ),
         const SizedBox(height: 24),
         const SectionLabel('Telemetrie du reacteur'),
         _StatsGrid(m: m),

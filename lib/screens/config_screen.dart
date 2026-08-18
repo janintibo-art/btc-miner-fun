@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import '../app_theme.dart';
 import '../core/address_validator.dart';
 import '../core/hash_mode.dart';
+import '../core/platform_profile.dart';
 import '../core/nonce_walker.dart';
 import '../state/miner_controller.dart';
 import '../widgets/app_card.dart';
@@ -304,11 +305,18 @@ class _ConfigScreenState extends State<ConfigScreen> {
                 label: '${m.effectiveThreads}',
                 onChanged: locked ? null : (v) => m.setThreads(v.round()),
               ),
-              const Text(
-                'Plus de coeurs, plus de hachages, mais aussi plus de chaleur et '
-                'de batterie consommee. La valeur conseillee est la moitie des '
-                'coeurs. Si le telephone chauffe, redescends.',
-                style: TextStyle(fontSize: 12, height: 1.5, color: AppColors.muted),
+              Text(
+                PlatformProfile.isDesktop
+                    ? 'Cette machine est ventilee et branchee : la valeur '
+                        'conseillee utilise tous les coeurs sauf un, garde pour '
+                        'le systeme et l\'interface. Descends si tu veux '
+                        'continuer a travailler pendant le minage.'
+                    : 'Plus de coeurs, plus de hachages, mais aussi plus de '
+                        'chaleur et de batterie consommee. La valeur conseillee '
+                        'est la moitie des coeurs. Si le telephone chauffe, '
+                        'redescends.',
+                style: const TextStyle(
+                    fontSize: 12, height: 1.5, color: AppColors.muted),
               ),
               const Divider(height: 30),
               Row(
@@ -537,37 +545,56 @@ class _ConfigScreenState extends State<ConfigScreen> {
           ),
         ),
         const SizedBox(height: 18),
-        const SectionLabel('Ecran et arriere-plan'),
-        AppCard(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              SwitchListTile(
-                contentPadding: EdgeInsets.zero,
-                value: m.keepScreenOn,
-                activeColor: AppColors.amber,
-                onChanged: m.setKeepScreenOn,
-                title: const Text('Garder l\'ecran allume',
+        // Sur ordinateur, ni l'ecran ni le service Android n'ont de sens :
+        // le bloc entier disparait plutot que d'afficher un reglage inerte.
+        if (PlatformProfile.canKeepScreenOn) ...[
+          const SectionLabel('Ecran et arriere-plan'),
+          AppCard(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                SwitchListTile(
+                  contentPadding: EdgeInsets.zero,
+                  value: m.keepScreenOn,
+                  activeColor: AppColors.amber,
+                  onChanged: m.setKeepScreenOn,
+                  title: const Text('Garder l\'ecran allume',
+                      style: TextStyle(
+                          fontSize: 14.5, fontWeight: FontWeight.w700)),
+                  subtitle: const Text(
+                    'Utile pour surveiller les compteurs, mais l\'ecran consomme '
+                    'souvent plus que le minage lui-meme.',
                     style: TextStyle(
-                        fontSize: 14.5, fontWeight: FontWeight.w700)),
-                subtitle: const Text(
-                  'Utile pour surveiller les compteurs, mais l\'ecran consomme '
-                  'souvent plus que le minage lui-meme.',
-                  style: TextStyle(
-                      fontSize: 12, height: 1.45, color: AppColors.muted),
+                        fontSize: 12, height: 1.45, color: AppColors.muted),
+                  ),
                 ),
-              ),
-              const Divider(height: 24),
-              const Text(
-                'Sur Android, un service de premier plan prend le relais des que '
-                'le minage demarre : le calcul continue ecran eteint, et une '
-                'notification permanente affiche la puissance et les parts. '
-                'Fermer l\'application depuis la liste des taches arrete tout.',
-                style: TextStyle(fontSize: 12, height: 1.5, color: AppColors.muted),
-              ),
-            ],
+                const Divider(height: 24),
+                const Text(
+                  'Sur Android, un service de premier plan prend le relais des '
+                  'que le minage demarre : le calcul continue ecran eteint, et '
+                  'une notification permanente affiche la puissance et les '
+                  'parts. Fermer l\'application depuis la liste des taches '
+                  'arrete tout.',
+                  style:
+                      TextStyle(fontSize: 12, height: 1.5, color: AppColors.muted),
+                ),
+              ],
+            ),
           ),
-        ),
+        ],
+        if (PlatformProfile.isDesktop) ...[
+          const SectionLabel('Raccourcis clavier'),
+          AppCard(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                _Shortcut('F5', 'Demarrer ou arreter le minage'),
+                _Shortcut('F11', 'Mode veille plein ecran'),
+                _Shortcut('Ctrl + 1 a 6', 'Changer d\'onglet'),
+              ],
+            ),
+          ),
+        ],
         const SizedBox(height: 20),
         FilledButton(
           onPressed: locked ? null : () => _save(m),
