@@ -1,6 +1,6 @@
 import 'dart:async';
 import 'dart:io';
-import 'dart:math';
+import 'dart:math' as math;
 
 import 'package:flutter/foundation.dart';
 import 'package:wakelock_plus/wakelock_plus.dart';
@@ -47,7 +47,7 @@ const kPoolPresets = <PoolPreset>[
 
 class MinerController extends ChangeNotifier {
   final MinerEngine _engine = MinerEngine();
-  final Random _random = Random();
+  final math.Random _random = math.Random();
   StratumClient? _client;
   StratumJob? _job;
   Timer? _ticker;
@@ -844,7 +844,7 @@ class MinerController extends ChangeNotifier {
   void _onSighting(double difficulty, int nonce) {
     sightings.insert(0, (difficulty: difficulty, nonce: nonce, at: DateTime.now()));
     if (sightings.length > 60) sightings.removeLast();
-    final bucket = difficulty <= 1 ? 0 : (log(difficulty) / ln2).floor();
+    final bucket = difficulty <= 1 ? 0 : (math.log(difficulty) / math.ln2).floor();
     sightingHistogram[bucket] = (sightingHistogram[bucket] ?? 0) + 1;
     notifyListeners();
   }

@@ -1,5 +1,12 @@
 include: package:flutter_lints/flutter.yaml
 
+analyzer:
+  errors:
+    # Les centaines de rappels sur withOpacity noyaient les vraies erreurs :
+    # dans la version 17, trois erreurs bloquantes etaient perdues au milieu de
+    # quatre-vingt-sept informations. Le style ne doit pas masquer le fond.
+    deprecated_member_use: ignore
+
 linter:
   rules:
     prefer_const_constructors: true

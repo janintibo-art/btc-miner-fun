@@ -11,6 +11,10 @@ const _bip84VectorAddress =
     'bc1qcr8te4kr609gcawutmrza0j4xv80jy8z306fyu';
 
 void main() {
+  // Le coffre passe par un canal de plateforme : sans cette ligne, le test
+  // echoue avec 'Binding has not yet been initialized'.
+  TestWidgetsFlutterBinding.ensureInitialized();
+
   group('WalletKeys BIP39/BIP84', () {
     test('reproduit le vecteur officiel BIP84 m/84\'/0\'/0\'/0/0', () {
       final wallet = WalletKeys.fromMnemonic(_bip84VectorMnemonic);

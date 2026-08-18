@@ -5,7 +5,6 @@ import 'package:provider/provider.dart';
 import '../app_theme.dart';
 import '../core/avalanche.dart';
 import '../core/bitcoin_utils.dart';
-import '../core/coinbase_decoder.dart';
 import '../state/miner_controller.dart';
 import '../widgets/app_card.dart';
 
