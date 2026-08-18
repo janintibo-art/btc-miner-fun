@@ -20,7 +20,7 @@ Interface soignee, onglet tutoriel integre, mode demo hors ligne et mode pool re
   genere a la compilation par `tool/patch_android.py`.
 - Tableau de bord : puissance de calcul, courbe 60 s, parts, meilleure difficulte, journal.
 - Ecran maintenu allume pendant le minage, icone d'application dediee.
-- Onglet tutoriel en 13 chapitres.
+- Onglet guide en 14 chapitres.
 - **Tests automatiques** : les calculs sont verifies contre le vrai bloc 125552
   de la chaine Bitcoin avant chaque compilation.
 
@@ -41,11 +41,12 @@ btc-miner-fun/
 │   │   ├── stratum_job.dart      Job du pool, en-tete de bloc 80 octets
 │   │   ├── sha256_fast.dart      SHA-256 maison, midstate, zero allocation
 │   │   ├── nonce_walker.dart     Strategies d'exploration, marche signature
+│   │   ├── price_service.dart    Cours du bitcoin et etat du reseau
 │   │   ├── benchmark.dart        Mesure comparative des trois moteurs
 │   │   ├── stratum_client.dart   Client Stratum V1 (TCP + JSON-RPC)
 │   │   └── miner_engine.dart     Boucle de hachage dans un isolate
 │   ├── state/miner_controller.dart
-│   ├── screens/                  Minage, Sessions, Reglages, Tutoriel, A propos
+│   ├── screens/                  Minage, Historique, Convertir, Reglages, Guide
 │   └── widgets/                  Carte, courbe, console, inspecteur
 ├── docs/TERMUX.md                Toutes les commandes, une par une
 ├── docs/ROADMAP.md               Les etapes suivantes
@@ -70,6 +71,9 @@ Sur Android, autorise l'installation depuis une source inconnue pour ton
 gestionnaire de fichiers.
 
 ## Etat du projet
+
+Etape 8 terminee : onglet de conversion bitcoin/euros avec cours en direct,
+cache hors ligne, cours manuel, et estimation chiffree de l'esperance de gain.
 
 Etape 7 terminee : trois strategies d'exploration des nonces, dont une marche
 signature propre a chaque utilisateur, verifiee sans repetition ni

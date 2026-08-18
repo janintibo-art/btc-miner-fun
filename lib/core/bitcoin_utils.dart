@@ -132,3 +132,49 @@ String formatDuration(Duration d) {
   final s = (d.inSeconds % 60).toString().padLeft(2, '0');
   return '$h:$m:$s';
 }
+
+/// Mise en forme d'un montant en euros, sans dependance externe.
+String formatEuros(double value) {
+  if (value.isNaN || value.isInfinite) return '-';
+  final negative = value < 0;
+  final v = value.abs();
+  final decimals = v >= 1000 ? 0 : (v >= 1 ? 2 : 4);
+  final text = v.toStringAsFixed(decimals);
+  final parts = text.split('.');
+  final integer = parts[0];
+  final buffer = StringBuffer();
+  for (var i = 0; i < integer.length; i++) {
+    if (i > 0 && (integer.length - i) % 3 == 0) buffer.write(' ');
+    buffer.write(integer[i]);
+  }
+  final joined = parts.length > 1 ? '$buffer,${parts[1]}' : buffer.toString();
+  return '${negative ? '-' : ''}$joined €';
+}
+
+/// Mise en forme d'un montant en bitcoins : 8 decimales, sans zeros inutiles.
+String formatBtc(double value) {
+  if (value.isNaN || value.isInfinite) return '-';
+  var text = value.toStringAsFixed(8);
+  if (text.contains('.')) {
+    text = text.replaceAll(RegExp(r'0+$'), '');
+    text = text.replaceAll(RegExp(r'\.$'), '');
+  }
+  return text.isEmpty ? '0' : text;
+}
+
+/// Un bitcoin vaut cent millions de satoshis.
+const int kSatoshisPerBtc = 100000000;
+
+/// Formate une duree tres longue en langage courant.
+String formatLongDuration(double days) {
+  if (days.isNaN || days.isInfinite || days <= 0) return 'jamais';
+  if (days < 1) return '${(days * 24).toStringAsFixed(1)} heures';
+  if (days < 365) return '${days.toStringAsFixed(0)} jours';
+  final years = days / 365.25;
+  if (years < 1000) return '${years.toStringAsFixed(0)} ans';
+  if (years < 1000000) return '${(years / 1000).toStringAsFixed(1)} milliers d\'annees';
+  if (years < 1000000000) {
+    return '${(years / 1000000).toStringAsFixed(1)} millions d\'annees';
+  }
+  return '${(years / 1000000000).toStringAsFixed(1)} milliards d\'annees';
+}

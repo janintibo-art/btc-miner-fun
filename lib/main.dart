@@ -2,8 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import 'app_theme.dart';
-import 'screens/about_screen.dart';
 import 'screens/config_screen.dart';
+import 'screens/converter_screen.dart';
 import 'screens/dashboard_screen.dart';
 import 'screens/history_screen.dart';
 import 'screens/tutorial_screen.dart';
@@ -43,10 +43,10 @@ class _RootShellState extends State<RootShell> {
 
   static const _titles = [
     'Minage',
-    'Sessions',
+    'Historique',
+    'Convertir',
     'Reglages',
-    'Tutoriel',
-    'A propos'
+    'Guide'
   ];
 
   @override
@@ -84,9 +84,9 @@ class _RootShellState extends State<RootShell> {
           children: const [
             DashboardScreen(),
             HistoryScreen(),
+            ConverterScreen(),
             ConfigScreen(),
             TutorialScreen(),
-            AboutScreen(),
           ],
         ),
       ),
@@ -116,7 +116,12 @@ class _RootShellState extends State<RootShell> {
                   icon: Icon(Icons.history_outlined),
                   selectedIcon:
                       Icon(Icons.history_rounded, color: AppColors.amber),
-                  label: 'Sessions'),
+                  label: 'Historique'),
+              NavigationDestination(
+                  icon: Icon(Icons.euro_outlined),
+                  selectedIcon:
+                      Icon(Icons.euro_rounded, color: AppColors.amber),
+                  label: 'Convertir'),
               NavigationDestination(
                   icon: Icon(Icons.tune_outlined),
                   selectedIcon: Icon(Icons.tune_rounded, color: AppColors.amber),
@@ -124,11 +129,7 @@ class _RootShellState extends State<RootShell> {
               NavigationDestination(
                   icon: Icon(Icons.school_outlined),
                   selectedIcon: Icon(Icons.school_rounded, color: AppColors.amber),
-                  label: 'Tutoriel'),
-              NavigationDestination(
-                  icon: Icon(Icons.info_outline),
-                  selectedIcon: Icon(Icons.info_rounded, color: AppColors.amber),
-                  label: 'A propos'),
+                  label: 'Guide'),
             ],
           ),
         ),

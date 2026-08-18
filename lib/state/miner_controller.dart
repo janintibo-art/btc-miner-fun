@@ -11,6 +11,7 @@ import '../core/benchmark.dart';
 import '../core/foreground_service.dart';
 import '../core/hash_mode.dart';
 import '../core/nonce_walker.dart';
+import '../core/price_service.dart';
 import '../core/miner_engine.dart';
 import '../core/session.dart';
 import '../core/stratum_client.dart';
@@ -82,6 +83,8 @@ class MinerController extends ChangeNotifier {
   final List<FoundShare> _pendingShares = <FoundShare>[];
   bool _authorized = false;
   Timer? _autoStopTimer;
+  MarketData? market;
+  bool priceLoading = false;
   bool benchmarkRunning = false;
   BenchmarkResult? benchmark;
 
@@ -124,6 +127,7 @@ class MinerController extends ChangeNotifier {
     hashMode = HashModeInfo.fromName(p.getString('hashMode'));
     nonceStrategy = NonceStrategyInfo.fromName(p.getString('nonceStrategy'));
     signaturePhrase = p.getString('signaturePhrase') ?? '';
+    market = MarketData.tryDecode(p.getString('market'));
     sessions.addAll(MiningSession.decodeList(p.getString('sessions') ?? '[]'));
 
     _engine.onStats = (hps, total) {
@@ -507,6 +511,42 @@ class MinerController extends ChangeNotifier {
 
   void setSignaturePhrase(String value) {
     signaturePhrase = value;
+    notifyListeners();
+  }
+
+  /// Recupere le cours et l'etat du reseau. Le dernier resultat connu est
+  /// conserve : hors connexion, la conversion continue de fonctionner.
+  Future<void> refreshMarket() async {
+    if (priceLoading) return;
+    priceLoading = true;
+    notifyListeners();
+    try {
+      final data = await PriceService.fetch();
+      market = data;
+      final p = await SharedPreferences.getInstance();
+      await p.setString('market', data.encode());
+      log('Cours mis a jour : ${formatEuros(data.eurPerBtc)} pour 1 bitcoin.');
+    } catch (e) {
+      log('Cours indisponible : verifie ta connexion.');
+    }
+    priceLoading = false;
+    notifyListeners();
+  }
+
+  /// Cours saisi a la main, pour rester utilisable hors ligne.
+  Future<void> setManualPrice(double eurPerBtc) async {
+    final data = MarketData(
+      eurPerBtc: eurPerBtc,
+      usdPerBtc: 0,
+      fetchedAt: DateTime.now(),
+      networkHashrate: market?.networkHashrate,
+      difficulty: market?.difficulty,
+      manual: true,
+    );
+    market = data;
+    final p = await SharedPreferences.getInstance();
+    await p.setString('market', data.encode());
+    log('Cours fixe manuellement a ${formatEuros(eurPerBtc)}.');
     notifyListeners();
   }
 

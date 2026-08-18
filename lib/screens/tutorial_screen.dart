@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../app_theme.dart';
 import '../widgets/app_card.dart';
+import 'about_screen.dart';
 
 class TutorialScreen extends StatelessWidget {
   const TutorialScreen({super.key});
@@ -31,6 +32,9 @@ class TutorialScreen extends StatelessWidget {
         const SizedBox(height: 18),
         const SectionLabel('Le tutoriel'),
         ..._chapters.map((c) => _Chapter(chapter: c)),
+        const SizedBox(height: 22),
+        const SectionLabel('L\'application'),
+        const AboutSection(),
       ],
     );
   }
@@ -197,6 +201,22 @@ const _chapters = <_ChapterData>[
         'L\'empreinte affichee dans Reglages est la carte d\'identite de ta '
         'marche : deux constantes, calculees a partir de ta phrase.',
     Icons.route_rounded,
+  ),
+  _ChapterData(
+    'Ce que vaut vraiment ta puissance',
+    'L\'onglet Convertir affiche le cours du bitcoin, mais surtout une '
+        'estimation honnete : ta puissance divisee par celle du reseau entier, '
+        'multipliee par les 144 blocs quotidiens et la recompense actuelle.\n\n'
+        'Le chiffre obtenu est une esperance mathematique. En solo, tu ne '
+        'toucheras pas un centieme d\'euro par jour : tu toucheras zero, '
+        'pendant tres longtemps, avec une chance infime de toucher un bloc '
+        'entier. C\'est une loterie, pas un salaire.\n\n'
+        'La ligne la plus parlante est celle du delai moyen avant un bloc. '
+        'Regarde-la une fois, elle vaut tous les discours.\n\n'
+        'Le cours vient de CoinGecko et la puissance du reseau de '
+        'mempool.space. Aucune inscription, aucune donnee envoyee : ce sont de '
+        'simples lectures. Hors ligne, tu peux fixer le cours a la main.',
+    Icons.euro_rounded,
   ),
   _ChapterData(
     'Compiler l\'APK et le .exe',

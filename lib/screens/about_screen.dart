@@ -3,13 +3,14 @@ import 'package:flutter/material.dart';
 import '../app_theme.dart';
 import '../widgets/app_card.dart';
 
-class AboutScreen extends StatelessWidget {
-  const AboutScreen({super.key});
+/// Presentation de l'application, affichee a la fin du guide.
+class AboutSection extends StatelessWidget {
+  const AboutSection({super.key});
 
   @override
   Widget build(BuildContext context) {
-    return ListView(
-      padding: const EdgeInsets.fromLTRB(16, 8, 16, 32),
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         AppCard(
           child: Column(
@@ -18,7 +19,7 @@ class AboutScreen extends StatelessWidget {
               Text('BTC Miner Fun',
                   style: mono(size: 24, weight: FontWeight.w700)),
               const SizedBox(height: 6),
-              Text('Version 0.7.0 - licence MIT',
+              Text('Version 0.8.0 - licence MIT',
                   style: mono(size: 12, color: AppColors.muted)),
               const SizedBox(height: 16),
               const Text(
@@ -41,6 +42,7 @@ class AboutScreen extends StatelessWidget {
         const _Fact('Compilation', 'GitHub Actions : tests, APK Android, .exe Windows'),
         const _Fact('Verification', 'Calculs testes contre le vrai bloc 125552'),
         const _Fact('Arriere-plan', 'Service de premier plan Android en Kotlin'),
+        const _Fact('Conversion', 'Cours CoinGecko et reseau mempool.space, cache hors ligne'),
         const _Fact('Historique', 'Sessions conservees sur l\'appareil, rien n\'est envoye'),
         const SizedBox(height: 16),
         AppCard(

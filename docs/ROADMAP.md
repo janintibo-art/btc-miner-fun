@@ -68,7 +68,18 @@
 - Honnetete assumee : le mode ne change pas les probabilites, il supprime les
   doublons et rend le parcours unique
 
-## Etape 8 - a faire
+## Etape 8 - terminee
+
+- Onglet Convertir : bitcoin vers euros et inversement, affichage en satoshis
+- Cours recupere sur CoinGecko, puissance du reseau sur mempool.space,
+  sans cle d'API ni donnee envoyee
+- Dernier cours connu conserve : la conversion fonctionne hors ligne
+- Saisie manuelle du cours en cas d'absence de connexion
+- Esperance de gain calculee a partir de la puissance reellement mesuree,
+  avec le delai moyen avant un bloc
+- Navigation reorganisee en cinq onglets, la presentation rejoint le guide
+
+## Etape 9 - a faire
 
 - Lecture de la temperature de la batterie pour brider automatiquement
 - Bouton d'arret directement dans la notification
