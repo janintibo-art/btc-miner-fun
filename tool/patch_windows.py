@@ -72,9 +72,12 @@ source = pathlib.Path("tool/native/gpu_probe.cpp")
 runner = pathlib.Path("windows/runner")
 
 if source.exists() and runner.exists():
-    destination = runner / "gpu_probe.cpp"
-    destination.write_text(source.read_text(encoding="utf-8"), encoding="utf-8")
-    print("gpu_probe.cpp copie dans windows/runner.")
+    for nom in ("gpu_probe.cpp", "gpu_kernel.cl.h"):
+        fichier = pathlib.Path("tool/native") / nom
+        if fichier.exists():
+            (runner / nom).write_text(
+                fichier.read_text(encoding="utf-8"), encoding="utf-8")
+    print("Pont natif copie dans windows/runner (source + noyau OpenCL).")
 
     windows_cmake = pathlib.Path("windows/CMakeLists.txt")
     if windows_cmake.exists():

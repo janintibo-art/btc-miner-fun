@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 
 import '../app_theme.dart';
+import '../core/bitcoin_utils.dart';
+import '../core/gpu_miner.dart';
 import '../core/gpu_probe.dart';
 import '../core/platform_profile.dart';
 import 'app_card.dart';
@@ -19,6 +21,8 @@ class HardwareCard extends StatefulWidget {
 class _HardwareCardState extends State<HardwareCard> {
   GpuProbeResult _result = GpuProbeResult.notProbed;
   bool _probed = false;
+  GpuSelfTest _selfTest = GpuSelfTest.notRun;
+  bool _testing = false;
 
   @override
   void initState() {
@@ -30,6 +34,19 @@ class _HardwareCardState extends State<HardwareCard> {
     setState(() {
       _result = probeGpuDevices();
       _probed = true;
+    });
+  }
+
+  Future<void> _runSelfTest() async {
+    setState(() => _testing = true);
+    // La compilation du noyau et les hachages passent par le pilote : on rend
+    // la main a l'interface avant de bloquer.
+    await Future<void>.delayed(const Duration(milliseconds: 50));
+    final result = runGpuSelfTest();
+    if (!mounted) return;
+    setState(() {
+      _selfTest = result;
+      _testing = false;
     });
   }
 
@@ -86,14 +103,39 @@ class _HardwareCardState extends State<HardwareCard> {
             ),
           if (_result.available) ...[
             const Divider(height: 26),
-            Text(
-              'Une carte graphique exploitable a ete trouvee. Elle ne calcule '
-              'encore rien : cette etape verifiait uniquement que le pont vers '
-              'le pilote fonctionne. Le noyau de hachage viendra ensuite, avec '
-              'un auto-test obligatoire contre le processeur avant toute '
-              'soumission au pool.',
-              style: const TextStyle(
-                  fontSize: 12, height: 1.5, color: AppColors.muted),
+            Text('AUTO-TEST DU MOTEUR GPU', style: label()),
+            const SizedBox(height: 8),
+            const Text(
+              'La carte doit reproduire exactement les hachages du processeur : '
+              'le bloc reel 125552, puis soixante-quatre en-tetes tires au '
+              'hasard. Tant que ce test n\'est pas passe, aucun resultat de la '
+              'carte n\'est utilise et rien n\'est envoye au pool.',
+              style: TextStyle(fontSize: 12, height: 1.5, color: AppColors.muted),
+            ),
+            const SizedBox(height: 14),
+            if (_selfTest.trials > 0 || _selfTest.message != GpuSelfTest.notRun.message)
+              _SelfTestReport(result: _selfTest),
+            SizedBox(
+              width: double.infinity,
+              child: OutlinedButton.icon(
+                onPressed: _testing ? null : _runSelfTest,
+                style: OutlinedButton.styleFrom(
+                  foregroundColor: AppColors.violet,
+                  side: const BorderSide(color: AppColors.line),
+                  padding: const EdgeInsets.symmetric(vertical: 13),
+                ),
+                icon: _testing
+                    ? const SizedBox(
+                        width: 16,
+                        height: 16,
+                        child: CircularProgressIndicator(
+                            strokeWidth: 2, color: AppColors.violet),
+                      )
+                    : const Icon(Icons.verified_outlined, size: 18),
+                label: Text(_testing
+                    ? 'Verification en cours...'
+                    : 'Compiler le noyau et verifier la carte'),
+              ),
             ),
           ],
         ],
@@ -149,6 +191,75 @@ class _Device extends StatelessWidget {
               ],
             ),
           ),
+        ],
+      ),
+    );
+  }
+}
+
+
+/// Compte rendu de l'auto-test, y compris en cas d'echec : l'en-tete fautif et
+/// les deux hachages sont affiches pour pouvoir rejouer le cas.
+class _SelfTestReport extends StatelessWidget {
+  const _SelfTestReport({required this.result});
+
+  final GpuSelfTest result;
+
+  @override
+  Widget build(BuildContext context) {
+    final color = result.passed ? AppColors.mint : AppColors.coral;
+    return Container(
+      width: double.infinity,
+      margin: const EdgeInsets.only(bottom: 14),
+      padding: const EdgeInsets.all(13),
+      decoration: BoxDecoration(
+        color: AppColors.panelHigh,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: color.withOpacity(.45)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Icon(
+                result.passed
+                    ? Icons.verified_rounded
+                    : Icons.error_outline_rounded,
+                size: 17,
+                color: color,
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Text(result.message,
+                    style: TextStyle(
+                        fontSize: 12.5, height: 1.45, color: color)),
+              ),
+            ],
+          ),
+          if (result.passed && result.hashrate != null) ...[
+            const SizedBox(height: 12),
+            Text('DEBIT MESURE', style: label()),
+            const SizedBox(height: 4),
+            Text(formatHashrate(result.hashrate!),
+                style: mono(size: 22, weight: FontWeight.w700)),
+          ],
+          if (!result.passed && result.mismatchHeader != null) ...[
+            const SizedBox(height: 12),
+            Text('EN-TETE FAUTIF', style: label()),
+            const SizedBox(height: 4),
+            SelectableText(result.mismatchHeader!,
+                style: mono(size: 9.5, color: AppColors.muted)),
+            const SizedBox(height: 8),
+            Text('PROCESSEUR', style: label()),
+            SelectableText(result.cpuHash ?? '-',
+                style: mono(size: 9.5, color: AppColors.mint)),
+            const SizedBox(height: 6),
+            Text('CARTE', style: label()),
+            SelectableText(result.gpuHash ?? '-',
+                style: mono(size: 9.5, color: AppColors.coral)),
+          ],
         ],
       ),
     );

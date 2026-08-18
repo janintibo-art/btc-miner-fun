@@ -37,6 +37,7 @@ SYMBOLES = {
     "hash_mode": "HashMode",
     "session": "MiningSession",
     "gpu_probe": "probeGpuDevices",
+    "gpu_miner": "runGpuSelfTest",
     "hardware_card": "HardwareCard",
 }
 
