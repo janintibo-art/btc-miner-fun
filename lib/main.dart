@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 
 import 'app_theme.dart';
+import 'core/app_version.dart';
 import 'screens/config_screen.dart';
 import 'screens/converter_screen.dart';
 import 'screens/dashboard_screen.dart';
@@ -131,7 +132,7 @@ class _RootShellState extends State<RootShell> {
                 border: Border.all(color: AppColors.line),
               ),
               child: Text(
-                'v16',
+                kAppVersionBadge,
                 style: mono(
                   size: 9.5,
                   weight: FontWeight.w800,

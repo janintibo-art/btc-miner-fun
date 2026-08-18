@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 
 import '../app_theme.dart';
 import '../core/avalanche.dart';
+import '../core/lottery_sim.dart';
 import '../core/bitcoin_utils.dart';
 import '../state/miner_controller.dart';
 import '../widgets/app_card.dart';
@@ -21,6 +22,8 @@ class _LabScreenState extends State<LabScreen> {
   int _consoleFilter = 0; // 0 tout, 1 recu, 2 envoye
   AvalancheResult? _avalanche;
   bool _avalancheRunning = false;
+  LotteryResult? _lottery;
+  bool _lotteryRunning = false;
 
   @override
   Widget build(BuildContext context) {
@@ -47,6 +50,35 @@ class _LabScreenState extends State<LabScreen> {
           m: m,
           filter: _consoleFilter,
           onFilter: (f) => setState(() => _consoleFilter = f),
+        ),
+        const SizedBox(height: 20),
+        const SectionLabel('Dix mille univers paralleles'),
+        _LotteryCard(
+          m: m,
+          result: _lottery,
+          running: _lotteryRunning,
+          onRun: () async {
+            final network = m.market?.networkHashrate;
+            var hashrate = m.hashrate;
+            if (hashrate <= 0) {
+              for (final session in m.sessions) {
+                if (session.averageHashrate > hashrate) {
+                  hashrate = session.averageHashrate;
+                }
+              }
+            }
+            if (network == null || network <= 0 || hashrate <= 0) return;
+            setState(() => _lotteryRunning = true);
+            try {
+              final r = await runLotterySimulation(
+                hashrate: hashrate,
+                networkHashrate: network,
+              );
+              if (mounted) setState(() => _lottery = r);
+            } finally {
+              if (mounted) setState(() => _lotteryRunning = false);
+            }
+          },
         ),
         const SizedBox(height: 20),
         const SectionLabel('Pourquoi tricher est impossible'),
@@ -598,6 +630,112 @@ class _ConsoleCard extends StatelessWidget {
             'echangees avec le pool, dans l\'ordre. mining.notify apporte un '
             'travail, mining.submit envoie une part.',
             style: mono(size: 10.5, color: AppColors.dim),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _LotteryCard extends StatelessWidget {
+  const _LotteryCard({
+    required this.m,
+    required this.result,
+    required this.running,
+    required this.onRun,
+  });
+
+  final MinerController m;
+  final LotteryResult? result;
+  final bool running;
+  final VoidCallback onRun;
+
+  @override
+  Widget build(BuildContext context) {
+    final network = m.market?.networkHashrate;
+    final pret = network != null && network > 0;
+
+    return AppCard(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            'On fait vivre dix mille univers paralleles avec ta puissance de '
+            'calcul, pendant cinquante ans chacun, et on compte ceux ou tu as '
+            'trouve un bloc. La formule exacte est affichee a cote : quand la '
+            'chance est minuscule, la simulation donne zero et seule la formule '
+            'reste parlante.',
+            style: TextStyle(fontSize: 12.5, height: 1.5, color: AppColors.muted),
+          ),
+          const SizedBox(height: 16),
+          if (!pret)
+            Text(
+              'Actualise le cours dans l\'onglet Euros : la puissance du reseau '
+              'est necessaire pour simuler.',
+              style: mono(size: 11.5, color: AppColors.dim),
+            ),
+          if (result != null) ...[
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.end,
+              children: [
+                Text('${result!.winners}',
+                    style: mono(size: 34, weight: FontWeight.w700, spacing: -1)),
+                const SizedBox(width: 8),
+                Padding(
+                  padding: const EdgeInsets.only(bottom: 6),
+                  child: Text('univers gagnants sur ${result!.universes}',
+                      style: mono(size: 12.5, color: AppColors.muted)),
+                ),
+              ],
+            ),
+            const SizedBox(height: 14),
+            _Row('Duree simulee', '${result!.years} ans par univers'),
+            _Row('Blocs attendus par univers',
+                result!.expectedBlocks.toStringAsExponential(2)),
+            _Row('Probabilite exacte',
+                result!.exactProbability.toStringAsExponential(2)),
+            _Row(
+              'Soit une chance sur',
+              result!.oneInHowMany.isInfinite
+                  ? 'jamais'
+                  : formatCount(result!.oneInHowMany.round()),
+              highlight: true,
+            ),
+            const SizedBox(height: 12),
+            Text(
+              result!.winners == 0
+                  ? 'Aucun univers gagnant. Ce n\'est pas un defaut de la '
+                      'simulation : il faudrait en faire tourner bien davantage '
+                      'pour en voir un seul.'
+                  : 'Un univers a trouve jusqu\'a ${result!.bestUniverseBlocks} '
+                      'bloc(s).',
+              style: mono(size: 11, color: AppColors.dim),
+            ),
+            const SizedBox(height: 14),
+          ],
+          SizedBox(
+            width: double.infinity,
+            child: OutlinedButton.icon(
+              onPressed: running || !pret ? null : onRun,
+              style: OutlinedButton.styleFrom(
+                foregroundColor: AppColors.violet,
+                side: const BorderSide(color: AppColors.line),
+                padding: const EdgeInsets.symmetric(vertical: 13),
+              ),
+              icon: running
+                  ? const SizedBox(
+                      width: 16,
+                      height: 16,
+                      child: CircularProgressIndicator(
+                          strokeWidth: 2, color: AppColors.violet),
+                    )
+                  : const Icon(Icons.casino_rounded, size: 18),
+              label: Text(running
+                  ? 'Simulation en cours...'
+                  : (result == null
+                      ? 'Simuler cinquante ans'
+                      : 'Relancer la simulation')),
+            ),
           ),
         ],
       ),

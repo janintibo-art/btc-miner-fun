@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../app_theme.dart';
+import '../core/app_version.dart';
 import '../widgets/app_card.dart';
 
 /// Presentation de l'application, affichee a la fin du guide.
@@ -19,7 +20,7 @@ class AboutSection extends StatelessWidget {
               Text('BTC Miner Fun',
                   style: mono(size: 24, weight: FontWeight.w700)),
               const SizedBox(height: 6),
-              Text('Version 0.20.0 - licence MIT',
+              Text('Version $kAppVersion - licence MIT',
                   style: mono(size: 12, color: AppColors.muted)),
               const SizedBox(height: 16),
               const Text(

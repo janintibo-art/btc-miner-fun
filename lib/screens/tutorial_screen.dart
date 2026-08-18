@@ -270,6 +270,20 @@ const _chapters = <_ChapterData>[
     Icons.science_rounded,
   ),
   _ChapterData(
+    'Dix mille univers, et un mode veille',
+    'Le simulateur du labo applique la loi de Poisson : avec ta puissance '
+        'reelle et celle du reseau, il fait vivre dix mille univers paralleles '
+        'pendant cinquante ans chacun, et compte ceux ou tu as trouve un bloc.\n\n'
+        'Le resultat sera presque toujours zero. Ce n\'est pas un defaut de la '
+        'simulation : la probabilite exacte, affichee a cote, montre combien '
+        'd\'univers il faudrait pour en voir un seul. La formule prend le '
+        'relais la ou le tirage devient muet.\n\n'
+        'Le mode veille, lui, transforme le telephone en console de reacteur : '
+        'puissance, nonce en cours et trouvailles qui defilent. A poser sur le '
+        'bureau pendant que ca calcule. Une touche sur l\'ecran pour revenir.',
+    Icons.casino_rounded,
+  ),
+  _ChapterData(
     'Compiler l\'APK et le .exe',
     'Le projet est compile par GitHub Actions, pas par ton telephone. A chaque '
         'envoi de code sur la branche main, GitHub construit :\n\n'

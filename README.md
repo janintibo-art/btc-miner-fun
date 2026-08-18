@@ -76,6 +76,10 @@ gestionnaire de fichiers.
 
 ## Etat du projet
 
+Version 0.21.0 : simulateur de loterie Monte-Carlo, mode veille plein ecran,
+et numero de version unique.
+
+
 Version 0.16.0 : onglet **Labo** - decodeur d'en-tete interactif, lecture de la
 transaction coinbase, seuil d'observation, console Stratum brute et banc
 d'avalanche.

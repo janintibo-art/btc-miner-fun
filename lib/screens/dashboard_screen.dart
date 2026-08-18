@@ -8,6 +8,7 @@ import '../core/hash_mode.dart';
 import '../core/nonce_walker.dart';
 import '../state/miner_controller.dart';
 import '../widgets/app_card.dart';
+import 'screensaver_screen.dart';
 import '../widgets/job_inspector.dart';
 import '../widgets/log_console.dart';
 import '../widgets/sparkline.dart';
