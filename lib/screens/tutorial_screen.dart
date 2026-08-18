@@ -147,6 +147,21 @@ const _chapters = <_ChapterData>[
     Icons.schedule_rounded,
   ),
   _ChapterData(
+    'Miner ecran eteint',
+    'Android suspend les applications quelques minutes apres l\'extinction de '
+        'l\'ecran. Pour continuer a calculer, il faut un service de premier '
+        'plan : c\'est le seul mecanisme autorise pour un travail long, et il '
+        'impose une notification permanente.\n\n'
+        'Cette notification n\'est pas une contrainte a subir mais une garantie : '
+        'aucune application ne peut faire chauffer ton processeur en cachette. '
+        'Elle affiche la puissance et les parts, et se met a jour toutes les dix '
+        'secondes.\n\n'
+        'Le service prend aussi un verrou processeur partiel, qui empeche la '
+        'mise en veille profonde. Balayer l\'application dans la liste des '
+        'taches arrete le minage et libere tout.',
+    Icons.notifications_active_rounded,
+  ),
+  _ChapterData(
     'Compiler l\'APK et le .exe',
     'Le projet est compile par GitHub Actions, pas par ton telephone. A chaque '
         'envoi de code sur la branche main, GitHub construit :\n\n'

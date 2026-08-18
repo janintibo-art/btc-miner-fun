@@ -147,6 +147,10 @@ class _StatsGrid extends StatelessWidget {
       ['Coeurs actifs', '${m.effectiveThreads} / ${m.availableCores}'],
       ['Parts en attente', m.pendingShares.toString()],
       ['Intensite', '${m.intensity} %'],
+      [
+        'Arriere-plan',
+        m.backgroundServiceActive ? 'actif' : (m.isActive ? 'ecran requis' : '-')
+      ],
     ];
 
     return GridView.builder(

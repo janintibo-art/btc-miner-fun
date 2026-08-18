@@ -14,9 +14,11 @@ Interface soignee, onglet tutoriel integre, mode demo hors ligne et mode pool re
 - **Multi-coeurs** : un isolate par coeur demande, l'interface ne gele jamais.
 - Reconnexion automatique au pool, avec file d'attente des parts trouvees hors ligne.
 - Reglage d'intensite, arret automatique programmable, historique des sessions.
+- **Minage ecran eteint** sur Android via un service de premier plan en Kotlin,
+  genere a la compilation par `tool/patch_android.py`.
 - Tableau de bord : puissance de calcul, courbe 60 s, parts, meilleure difficulte, journal.
 - Ecran maintenu allume pendant le minage, icone d'application dediee.
-- Onglet tutoriel en 10 chapitres.
+- Onglet tutoriel en 11 chapitres.
 - **Tests automatiques** : les calculs sont verifies contre le vrai bloc 125552
   de la chaine Bitcoin avant chaque compilation.
 
@@ -64,6 +66,6 @@ gestionnaire de fichiers.
 
 ## Etat du projet
 
-Etape 4 terminee : file d'attente des parts, intensite reglable, arret
-automatique, historique des sessions, APK decoupes par architecture.
+Etape 5 terminee : service de premier plan Android, notification de suivi,
+verrou processeur partiel, ecran allume devenu optionnel.
 Voir `docs/ROADMAP.md` pour la suite.

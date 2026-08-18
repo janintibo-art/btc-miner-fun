@@ -305,6 +305,38 @@ class _ConfigScreenState extends State<ConfigScreen> {
             ],
           ),
         ),
+        const SizedBox(height: 18),
+        const SectionLabel('Ecran et arriere-plan'),
+        AppCard(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              SwitchListTile(
+                contentPadding: EdgeInsets.zero,
+                value: m.keepScreenOn,
+                activeColor: AppColors.amber,
+                onChanged: m.setKeepScreenOn,
+                title: const Text('Garder l\'ecran allume',
+                    style: TextStyle(
+                        fontSize: 14.5, fontWeight: FontWeight.w700)),
+                subtitle: const Text(
+                  'Utile pour surveiller les compteurs, mais l\'ecran consomme '
+                  'souvent plus que le minage lui-meme.',
+                  style: TextStyle(
+                      fontSize: 12, height: 1.45, color: AppColors.muted),
+                ),
+              ),
+              const Divider(height: 24),
+              const Text(
+                'Sur Android, un service de premier plan prend le relais des que '
+                'le minage demarre : le calcul continue ecran eteint, et une '
+                'notification permanente affiche la puissance et les parts. '
+                'Fermer l\'application depuis la liste des taches arrete tout.',
+                style: TextStyle(fontSize: 12, height: 1.5, color: AppColors.muted),
+              ),
+            ],
+          ),
+        ),
         const SizedBox(height: 20),
         FilledButton(
           onPressed: locked ? null : () => _save(m),

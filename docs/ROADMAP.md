@@ -37,9 +37,20 @@
 - Historique des sessions sur l'appareil, avec totaux cumules
 - APK decoupes par architecture : environ 8 Mo au lieu de 22 Mo
 
-## Etape 5 - a faire
+## Etape 5 - terminee
 
-- Service de premier plan Android pour miner ecran eteint
+- Service de premier plan Android ecrit en Kotlin (MiningService.kt),
+  genere par tool/patch_android.py au moment de la compilation
+- Verrou processeur partiel : le calcul continue ecran eteint
+- Notification permanente mise a jour toutes les dix secondes
+  (puissance, parts acceptees, duree)
+- Pont MethodChannel entre Dart et Android, sans effet sur Windows
+- Demande de la permission de notification sur Android 13 et suivants
+- L'ecran allume devient un choix, plus une obligation
+
+## Etape 6 - a faire
+
 - Lecture de la temperature de la batterie pour brider automatiquement
+- Bouton d'arret directement dans la notification
 - Signature de l'APK pour distribution hors GitHub
 - Publication automatique d'une release GitHub sur tag de version

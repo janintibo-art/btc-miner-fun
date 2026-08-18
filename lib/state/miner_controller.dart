@@ -7,6 +7,7 @@ import 'package:wakelock_plus/wakelock_plus.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../core/bitcoin_utils.dart';
+import '../core/foreground_service.dart';
 import '../core/miner_engine.dart';
 import '../core/session.dart';
 import '../core/stratum_client.dart';
@@ -54,6 +55,8 @@ class MinerController extends ChangeNotifier {
   int threads = 0; // 0 = valeur conseillee, calculee au premier lancement
   int intensity = 100; // 10 a 100 %
   int autoStopMinutes = 0; // 0 = pas d'arret automatique
+  bool keepScreenOn = false;
+  bool backgroundServiceActive = false;
 
   // ---- Etat ----
   MinerStatus status = MinerStatus.stopped;
@@ -109,6 +112,7 @@ class MinerController extends ChangeNotifier {
     threads = p.getInt('threads') ?? 0;
     intensity = p.getInt('intensity') ?? 100;
     autoStopMinutes = p.getInt('autoStopMinutes') ?? 0;
+    keepScreenOn = p.getBool('keepScreenOn') ?? false;
     sessions.addAll(MiningSession.decodeList(p.getString('sessions') ?? '[]'));
 
     _engine.onStats = (hps, total) {
@@ -138,6 +142,7 @@ class MinerController extends ChangeNotifier {
     await p.setInt('threads', threads);
     await p.setInt('intensity', intensity);
     await p.setInt('autoStopMinutes', autoStopMinutes);
+    await p.setBool('keepScreenOn', keepScreenOn);
     log('Reglages enregistres.');
     notifyListeners();
   }
@@ -180,13 +185,26 @@ class MinerController extends ChangeNotifier {
     _authorized = false;
     await _engine.start(effectiveThreads);
     _engine.setIntensity(intensity);
-    _setWakelock(true);
+    if (keepScreenOn) _setWakelock(true);
+
+    if (ForegroundService.isSupported) {
+      backgroundServiceActive = await ForegroundService.start(
+        title: 'BTC Miner Fun',
+        text: 'Connexion a $poolHost...',
+      );
+      log(backgroundServiceActive
+          ? 'Service de premier plan actif : le minage continue ecran eteint.'
+          : 'Service de premier plan indisponible : le minage s\'arretera '
+              'quand l\'ecran s\'eteindra.');
+    }
     log('Moteur lance sur $effectiveThreads coeur(s) '
         '(sur $availableCores disponibles).');
     _ticker?.cancel();
+    var tick = 0;
     _ticker = Timer.periodic(const Duration(seconds: 1), (_) {
       history.add(hashrate);
       if (history.length > 60) history.removeAt(0);
+      if (backgroundServiceActive && ++tick % 10 == 0) _updateNotification();
       notifyListeners();
     });
 
@@ -303,6 +321,10 @@ class MinerController extends ChangeNotifier {
     _client = null;
     await _engine.stop();
     _setWakelock(false);
+    if (backgroundServiceActive) {
+      await ForegroundService.stop();
+      backgroundServiceActive = false;
+    }
     status = MinerStatus.stopped;
     statusMessage = 'A l\'arret';
     hashrate = 0;
@@ -450,6 +472,12 @@ class MinerController extends ChangeNotifier {
     notifyListeners();
   }
 
+  void setKeepScreenOn(bool value) {
+    keepScreenOn = value;
+    if (isActive) _setWakelock(value);
+    notifyListeners();
+  }
+
   Future<void> clearSessions() async {
     sessions.clear();
     final p = await SharedPreferences.getInstance();
@@ -471,6 +499,16 @@ class MinerController extends ChangeNotifier {
     return (hashes: hashes, seconds: seconds, accepted: accepted, best: best);
   }
 
+  void _updateNotification() {
+    final parts = accepted == 0
+        ? 'aucune part pour l\'instant'
+        : '$accepted part(s) acceptee(s)';
+    ForegroundService.update(
+      title: '${formatHashrate(hashrate)} - $poolHost',
+      text: '$parts - ${formatDuration(uptime)} de minage',
+    );
+  }
+
   /// Empeche l'ecran de s'eteindre pendant le minage. Sans effet sur les
   /// plateformes qui ne le supportent pas.
   void _setWakelock(bool enable) {
@@ -489,6 +527,7 @@ class MinerController extends ChangeNotifier {
     _client?.disconnect();
     _engine.stop();
     _setWakelock(false);
+    ForegroundService.stop();
     super.dispose();
   }
 }
