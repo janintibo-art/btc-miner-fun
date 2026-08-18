@@ -19,7 +19,7 @@ class AboutSection extends StatelessWidget {
               Text('BTC Miner Fun',
                   style: mono(size: 24, weight: FontWeight.w700)),
               const SizedBox(height: 6),
-              Text('Version 0.16.0 - licence MIT',
+              Text('Version 0.17.0 - licence MIT',
                   style: mono(size: 12, color: AppColors.muted)),
               const SizedBox(height: 16),
               const Text(

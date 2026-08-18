@@ -173,7 +173,7 @@ class _SessionTile extends StatelessWidget {
               style: mono(size: 11.5, color: AppColors.muted),
             ),
             const SizedBox(height: 4),
-            Text(session.pool, style: mono(size: 11, color: AppColors.line)),
+            Text(session.pool, style: mono(size: 11, color: AppColors.dim)),
           ],
         ),
       ),

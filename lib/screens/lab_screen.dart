@@ -235,7 +235,7 @@ class _HeaderDecoder extends StatelessWidget {
           Text(
             'Un travail contient 4 294 967 296 nonces. Quand ils sont epuises, '
             'l\'extranonce change et l\'espace repart a zero.',
-            style: mono(size: 10.5, color: AppColors.line),
+            style: mono(size: 10.5, color: AppColors.dim),
           ),
         ],
       ),
@@ -301,7 +301,7 @@ class _CoinbaseCard extends StatelessWidget {
             Text(
               'Les pools signent leurs blocs ainsi depuis toujours. Le tout '
               'premier bloc de Bitcoin contenait un titre de journal.',
-              style: mono(size: 10.5, color: AppColors.line),
+              style: mono(size: 10.5, color: AppColors.dim),
             ),
           ],
           const SizedBox(height: 14),
@@ -450,7 +450,7 @@ class _SightingsCard extends StatelessWidget {
               'Chaque palier est deux fois plus dur que le precedent, et '
               'devrait donc apparaitre deux fois moins souvent. La loi de '
               'probabilite se dessine sous tes yeux.',
-              style: mono(size: 10.5, color: AppColors.line),
+              style: mono(size: 10.5, color: AppColors.dim),
             ),
           ],
           if (m.sightings.isNotEmpty) ...[
@@ -598,7 +598,7 @@ class _ConsoleCard extends StatelessWidget {
             'Voici le protocole Stratum sans intermediaire : les lignes JSON '
             'echangees avec le pool, dans l\'ordre. mining.notify apporte un '
             'travail, mining.submit envoie une part.',
-            style: mono(size: 10.5, color: AppColors.line),
+            style: mono(size: 10.5, color: AppColors.dim),
           ),
         ],
       ),

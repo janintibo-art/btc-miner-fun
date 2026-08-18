@@ -340,7 +340,7 @@ class _BalanceCard extends StatelessWidget {
             Text(
               'Consultation seule, via mempool.space. Cette application ne '
               'detient aucune cle et ne peut rien depenser.',
-              style: mono(size: 10.5, color: AppColors.line),
+              style: mono(size: 10.5, color: AppColors.dim),
             ),
           ],
         ],
