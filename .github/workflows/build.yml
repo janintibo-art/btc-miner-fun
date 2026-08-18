@@ -1,4 +1,4 @@
-name: Compilation Android et Windows
+name: Tests, Android et Windows
 
 on:
   push:
@@ -7,8 +7,26 @@ on:
   workflow_dispatch:
 
 jobs:
+  tests:
+    name: Tests du moteur de minage
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+
+      - name: Dependances
+        run: flutter pub get
+
+      - name: Verifier les calculs sur un vrai bloc Bitcoin
+        run: flutter test
+
   android:
     name: APK Android
+    needs: tests
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -27,6 +45,8 @@ jobs:
         run: |
           mkdir -p /tmp/src
           cp -r lib /tmp/src/lib
+          cp -r test /tmp/src/test
+          cp -r assets /tmp/src/assets
           cp pubspec.yaml /tmp/src/pubspec.yaml
 
       - name: Generer les dossiers de plateforme
@@ -34,15 +54,21 @@ jobs:
 
       - name: Restaurer les sources
         run: |
-          rm -rf lib
+          rm -rf lib test
           cp -r /tmp/src/lib lib
+          cp -r /tmp/src/test test
+          cp -r /tmp/src/assets assets
           cp /tmp/src/pubspec.yaml pubspec.yaml
-
-      - name: Patcher le manifeste Android
-        run: python3 tool/patch_android.py
 
       - name: Dependances
         run: flutter pub get
+
+      - name: Generer l'icone
+        continue-on-error: true
+        run: dart run flutter_launcher_icons
+
+      - name: Patcher le manifeste Android
+        run: python3 tool/patch_android.py
 
       - name: Construire l'APK
         run: flutter build apk --release
@@ -55,6 +81,7 @@ jobs:
 
   windows:
     name: Executable Windows
+    needs: tests
     runs-on: windows-latest
     defaults:
       run:
@@ -71,6 +98,8 @@ jobs:
         run: |
           mkdir -p /tmp/src
           cp -r lib /tmp/src/lib
+          cp -r test /tmp/src/test
+          cp -r assets /tmp/src/assets
           cp pubspec.yaml /tmp/src/pubspec.yaml
 
       - name: Generer les dossiers de plateforme
@@ -78,8 +107,10 @@ jobs:
 
       - name: Restaurer les sources
         run: |
-          rm -rf lib
+          rm -rf lib test
           cp -r /tmp/src/lib lib
+          cp -r /tmp/src/test test
+          cp -r /tmp/src/assets assets
           cp /tmp/src/pubspec.yaml pubspec.yaml
 
       - name: Activer la cible Windows
@@ -87,6 +118,13 @@ jobs:
 
       - name: Dependances
         run: flutter pub get
+
+      - name: Generer l'icone
+        continue-on-error: true
+        run: dart run flutter_launcher_icons
+
+      - name: Renommer l'executable et la fenetre
+        run: python tool/patch_windows.py
 
       - name: Construire l'executable
         run: flutter build windows --release

@@ -5,51 +5,71 @@ import 'dart:typed_data';
 import 'bitcoin_utils.dart';
 import 'stratum_job.dart';
 
-/// Le moteur tourne dans un isolate separe pour ne jamais figer l'interface.
+/// Le moteur repartit le travail sur plusieurs isolates : un par coeur
+/// demande. Chacun explore les nonces avec un pas different, ils ne se
+/// marchent donc jamais dessus.
 class MinerEngine {
-  Isolate? _isolate;
-  SendPort? _tx;
+  final List<Isolate> _isolates = <Isolate>[];
+  final Map<int, SendPort> _ports = <int, SendPort>{};
+  final Map<int, int> _totals = <int, int>{};
+  final Map<int, double> _rates = <int, double>{};
   ReceivePort? _rx;
   Completer<void>? _ready;
+  int _workerCount = 1;
 
   void Function(double hashrate, int totalHashes)? onStats;
   void Function(FoundShare share)? onShare;
 
-  bool get isStarted => _isolate != null;
+  int get workerCount => _workerCount;
+  bool get isStarted => _isolates.isNotEmpty;
 
-  Future<void> start() async {
-    if (_isolate != null) return;
+  Future<void> start(int workers) async {
+    if (_isolates.isNotEmpty) return;
+    _workerCount = workers.clamp(1, 16);
+    _totals.clear();
+    _rates.clear();
+
     final ready = Completer<void>();
     _ready = ready;
-    _rx = ReceivePort();
-    _isolate = await Isolate.spawn(_minerEntryPoint, _rx!.sendPort);
-    _rx!.listen((msg) {
-      if (msg is SendPort) {
-        _tx = msg;
-        if (!ready.isCompleted) ready.complete();
-        _tx!.send({'type': 'start'});
-        return;
-      }
-      if (msg is Map) {
-        switch (msg['type']) {
-          case 'stats':
-            onStats?.call(
-                (msg['hps'] as num).toDouble(), msg['total'] as int);
-            break;
-          case 'share':
-            final hash = Uint8List.fromList(List<int>.from(msg['hash'] as List));
-            onShare?.call(FoundShare(
-              jobId: msg['jobId'] as String,
-              extranonce2: msg['extranonce2'] as String,
-              nTime: msg['ntime'] as String,
-              nonce: msg['nonce'] as int,
-              hashHex: bytesToHex(reverseBytes(hash)),
-              difficulty: difficultyOfHash(hash),
-            ));
-            break;
-        }
+    final rx = ReceivePort();
+    _rx = rx;
+
+    rx.listen((msg) {
+      if (msg is! Map) return;
+      final index = (msg['index'] as int?) ?? 0;
+      switch (msg['type']) {
+        case 'hello':
+          _ports[index] = msg['port'] as SendPort;
+          _ports[index]!.send({'type': 'start'});
+          if (_ports.length == _workerCount && !ready.isCompleted) {
+            ready.complete();
+          }
+          break;
+        case 'stats':
+          _totals[index] = msg['total'] as int;
+          _rates[index] = (msg['hps'] as num).toDouble();
+          onStats?.call(
+            _rates.values.fold(0.0, (a, b) => a + b),
+            _totals.values.fold(0, (a, b) => a + b),
+          );
+          break;
+        case 'share':
+          final hash = Uint8List.fromList(List<int>.from(msg['hash'] as List));
+          onShare?.call(FoundShare(
+            jobId: msg['jobId'] as String,
+            extranonce2: msg['extranonce2'] as String,
+            nTime: msg['ntime'] as String,
+            nonce: msg['nonce'] as int,
+            hashHex: bytesToHex(reverseBytes(hash)),
+            difficulty: difficultyOfHash(hash),
+          ));
+          break;
       }
     });
+
+    for (var i = 0; i < _workerCount; i++) {
+      _isolates.add(await Isolate.spawn(_minerEntryPoint, [rx.sendPort, i]));
+    }
     await ready.future;
   }
 
@@ -57,29 +77,47 @@ class MinerEngine {
     final ready = _ready;
     if (ready == null) return;
     await ready.future;
-    _tx?.send(work.toMap());
+    for (final entry in _ports.entries) {
+      entry.value.send(work.toMap(
+        offset: entry.key,
+        stride: _workerCount,
+      ));
+    }
   }
 
-  void pause() => _tx?.send({'type': 'pause'});
+  void pause() {
+    for (final p in _ports.values) {
+      p.send({'type': 'pause'});
+    }
+  }
 
   Future<void> stop() async {
-    _tx?.send({'type': 'stop'});
-    await Future<void>.delayed(const Duration(milliseconds: 60));
-    _isolate?.kill(priority: Isolate.immediate);
-    _isolate = null;
+    for (final p in _ports.values) {
+      p.send({'type': 'stop'});
+    }
+    await Future<void>.delayed(const Duration(milliseconds: 80));
+    for (final iso in _isolates) {
+      iso.kill(priority: Isolate.immediate);
+    }
+    _isolates.clear();
+    _ports.clear();
+    _totals.clear();
+    _rates.clear();
     _rx?.close();
     _rx = null;
-    _tx = null;
     _ready = null;
   }
 }
 
 /// ---------------------------------------------------------------------------
-/// Code execute dans l'isolate : la boucle de hachage.
+/// Code execute dans chaque isolate : la boucle de hachage.
 /// ---------------------------------------------------------------------------
-void _minerEntryPoint(SendPort mainPort) {
+void _minerEntryPoint(List<dynamic> args) {
+  final mainPort = args[0] as SendPort;
+  final index = args[1] as int;
+
   final rx = ReceivePort();
-  mainPort.send(rx.sendPort);
+  mainPort.send({'type': 'hello', 'index': index, 'port': rx.sendPort});
 
   Uint8List? header;
   Uint8List? target;
@@ -87,6 +125,7 @@ void _minerEntryPoint(SendPort mainPort) {
   var extranonce2 = '';
   var nTime = '';
   var nonce = 0;
+  var stride = 1;
   var totalHashes = 0;
   var running = false;
   var looping = false;
@@ -114,6 +153,7 @@ void _minerEntryPoint(SendPort mainPort) {
         if (hashMeetsTarget(hash, t)) {
           mainPort.send({
             'type': 'share',
+            'index': index,
             'jobId': jobId,
             'extranonce2': extranonce2,
             'ntime': nTime,
@@ -121,20 +161,20 @@ void _minerEntryPoint(SendPort mainPort) {
             'hash': hash,
           });
         }
-        nonce = (nonce + 1) & 0xFFFFFFFF;
+        nonce = (nonce + stride) & 0xFFFFFFFF;
       }
 
       final now = DateTime.now().millisecondsSinceEpoch;
       if (now - lastTick >= 1000) {
         mainPort.send({
           'type': 'stats',
+          'index': index,
           'total': totalHashes,
           'hps': (totalHashes - lastHashes) * 1000 / (now - lastTick),
         });
         lastHashes = totalHashes;
         lastTick = now;
       }
-      // Laisse respirer la boucle d'evenements de l'isolate.
       await Future<void>.delayed(Duration.zero);
     }
     looping = false;
@@ -149,7 +189,9 @@ void _minerEntryPoint(SendPort mainPort) {
         jobId = msg['jobId'] as String;
         extranonce2 = msg['extranonce2'] as String;
         nTime = msg['ntime'] as String;
-        nonce = (msg['startNonce'] as int?) ?? 0;
+        stride = (msg['stride'] as int?) ?? 1;
+        nonce = (((msg['startNonce'] as int?) ?? 0) + ((msg['offset'] as int?) ?? 0)) &
+            0xFFFFFFFF;
         break;
       case 'start':
         running = true;

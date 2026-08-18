@@ -17,11 +17,20 @@
 - Choix du pool par presets, verification de forme de l'adresse Bitcoin
 - Tutoriel reecrit autour du protocole reel
 
-## Etape 3 - a faire
+## Etape 3 - terminee
 
-- Tests unitaires sur la construction de l'en-tete avec un bloc connu
-- Plusieurs isolates pour utiliser tous les coeurs du processeur
-- Icone et nom d'application personnalises
+- Tests unitaires executes par la CI avant chaque compilation :
+  double SHA-256 verifie contre le bloc 125552, cibles, difficultes,
+  racine de Merkle et en-tete Stratum compares a des vecteurs de reference
+- Minage multi-coeurs : un isolate par coeur, plages de nonces disjointes
+- Reglage du nombre de coeurs, avec valeur conseillee prudente
+- Ecran maintenu allume pendant le minage
+- Icone d'application et executable nomme BTCMinerFun.exe
+
+## Etape 4 - a faire
+
 - Service de premier plan Android pour miner ecran eteint
-- Limiteur thermique : ralentir quand l'appareil chauffe
-- Historique des sessions
+- Limiteur thermique : ralentir automatiquement quand l'appareil chauffe
+- File d'attente des parts en cas de coupure reseau
+- Historique des sessions et statistiques cumulees
+- Signature de l'APK pour distribution hors GitHub

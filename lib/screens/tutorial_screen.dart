@@ -120,6 +120,19 @@ const _chapters = <_ChapterData>[
     Icons.terminal_rounded,
   ),
   _ChapterData(
+    'Coeurs, chaleur et batterie',
+    'Le minage est un calcul pur : chaque coeur du processeur peut chercher des '
+        'nonces en parallele, sur une plage differente. Doubler les coeurs double '
+        'a peu pres la puissance de calcul.\n\n'
+        'Mais un telephone n\'est pas refroidi. Au-dela de la moitie des coeurs, '
+        'il chauffe, se bride tout seul, et la batterie fond. C\'est pourquoi le '
+        'reglage par defaut n\'utilise que la moitie des coeurs, quatre au '
+        'maximum.\n\n'
+        'Pendant le minage, l\'ecran reste allume : c\'est necessaire pour que '
+        'Android n\'endorme pas l\'application.',
+    Icons.developer_board_rounded,
+  ),
+  _ChapterData(
     'Compiler l\'APK et le .exe',
     'Le projet est compile par GitHub Actions, pas par ton telephone. A chaque '
         'envoi de code sur la branche main, GitHub construit :\n\n'

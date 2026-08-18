@@ -109,7 +109,7 @@ class WorkPackage {
   final String nTime;
   final int startNonce;
 
-  Map<String, dynamic> toMap() => {
+  Map<String, dynamic> toMap({int offset = 0, int stride = 1}) => {
         'type': 'work',
         'jobId': jobId,
         'header': header,
@@ -117,6 +117,8 @@ class WorkPackage {
         'extranonce2': extranonce2,
         'ntime': nTime,
         'startNonce': startNonce,
+        'offset': offset,
+        'stride': stride,
       };
 }
 

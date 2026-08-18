@@ -196,6 +196,49 @@ class _ConfigScreenState extends State<ConfigScreen> {
             ],
           ),
         ),
+        const SizedBox(height: 18),
+        const SectionLabel('Puissance'),
+        AppCard(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.end,
+                children: [
+                  Text('${m.effectiveThreads}',
+                      style: mono(size: 30, weight: FontWeight.w700)),
+                  const SizedBox(width: 8),
+                  Padding(
+                    padding: const EdgeInsets.only(bottom: 5),
+                    child: Text(
+                      m.effectiveThreads > 1 ? 'coeurs utilises' : 'coeur utilise',
+                      style: const TextStyle(
+                          fontSize: 13, fontWeight: FontWeight.w600),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 2),
+              Text('${m.availableCores} coeurs disponibles sur cet appareil',
+                  style: mono(size: 11.5, color: AppColors.muted)),
+              Slider(
+                value: m.effectiveThreads.toDouble(),
+                min: 1,
+                max: m.availableCores.toDouble(),
+                divisions: m.availableCores > 1 ? m.availableCores - 1 : null,
+                activeColor: AppColors.amber,
+                label: '${m.effectiveThreads}',
+                onChanged: locked ? null : (v) => m.setThreads(v.round()),
+              ),
+              const Text(
+                'Plus de coeurs, plus de hachages, mais aussi plus de chaleur et '
+                'de batterie consommee. La valeur conseillee est la moitie des '
+                'coeurs. Si le telephone chauffe, redescends.',
+                style: TextStyle(fontSize: 12, height: 1.5, color: AppColors.muted),
+              ),
+            ],
+          ),
+        ),
         const SizedBox(height: 20),
         FilledButton(
           onPressed: locked ? null : () => _save(m),

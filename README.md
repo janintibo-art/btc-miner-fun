@@ -11,10 +11,13 @@ Interface soignee, onglet tutoriel integre, mode demo hors ligne et mode pool re
 - **Minage reel** : connexion Stratum V1 a un vrai pool (subscribe / authorize / notify / submit).
 - **Inspecteur de bloc** : l'en-tete sur lequel tu travailles, champ par champ, avec
   l'explication de chaque valeur. Rien n'est simule.
-- Double SHA-256 dans un *isolate* separe : l'interface ne gele jamais.
+- **Multi-coeurs** : un isolate par coeur demande, l'interface ne gele jamais.
 - Reconnexion automatique au pool, avec delai croissant.
 - Tableau de bord : puissance de calcul, courbe 60 s, parts, meilleure difficulte, journal.
-- Onglet tutoriel en 8 chapitres.
+- Ecran maintenu allume pendant le minage, icone d'application dediee.
+- Onglet tutoriel en 9 chapitres.
+- **Tests automatiques** : les calculs sont verifies contre le vrai bloc 125552
+  de la chaine Bitcoin avant chaque compilation.
 
 ## Structure du depot
 
@@ -22,6 +25,9 @@ Interface soignee, onglet tutoriel integre, mode demo hors ligne et mode pool re
 btc-miner-fun/
 ├── .github/workflows/build.yml   Compilation automatique APK + EXE
 ├── tool/patch_android.py         Ajoute la permission INTERNET au manifeste
+├── tool/patch_windows.py         Renomme l'executable et la fenetre
+├── assets/icon/                  Icone de l'application
+├── test/mining_test.dart         Vecteurs de reference du protocole
 ├── lib/
 │   ├── main.dart                 Point d'entree et navigation
 │   ├── app_theme.dart            Palette et typographie
@@ -55,6 +61,6 @@ gestionnaire de fichiers.
 
 ## Etat du projet
 
-Etape 2 terminee : minage reel uniquement, inspecteur de bloc explique,
-reconnexion automatique, presets de pools.
+Etape 3 terminee : minage multi-coeurs, tests automatiques sur un bloc reel,
+icone et executable nommes, ecran maintenu allume.
 Voir `docs/ROADMAP.md` pour la suite.

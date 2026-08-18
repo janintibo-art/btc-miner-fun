@@ -1,7 +1,9 @@
 import 'dart:async';
+import 'dart:io';
 import 'dart:math';
 
 import 'package:flutter/foundation.dart';
+import 'package:wakelock_plus/wakelock_plus.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../core/bitcoin_utils.dart';
@@ -48,6 +50,7 @@ class MinerController extends ChangeNotifier {
   String wallet = '';
   String workerName = 'telephone';
   String poolPassword = 'x';
+  int threads = 0; // 0 = valeur conseillee, calculee au premier lancement
 
   // ---- Etat ----
   MinerStatus status = MinerStatus.stopped;
@@ -65,6 +68,15 @@ class MinerController extends ChangeNotifier {
   final List<String> logs = <String>[];
 
   bool get isBusy => status != MinerStatus.stopped && status != MinerStatus.error;
+
+  /// Nombre de coeurs disponibles sur l'appareil.
+  int get availableCores => Platform.numberOfProcessors.clamp(1, 16);
+
+  /// Par defaut on garde de la marge : la moitie des coeurs, 4 au maximum.
+  int get recommendedThreads => (availableCores / 2).floor().clamp(1, 4);
+
+  int get effectiveThreads =>
+      threads <= 0 ? recommendedThreads : threads.clamp(1, availableCores);
   bool get isActive => _wantsMining;
   Duration get uptime =>
       startedAt == null ? Duration.zero : DateTime.now().difference(startedAt!);
@@ -85,6 +97,7 @@ class MinerController extends ChangeNotifier {
     wallet = p.getString('wallet') ?? '';
     workerName = p.getString('workerName') ?? workerName;
     poolPassword = p.getString('poolPassword') ?? poolPassword;
+    threads = p.getInt('threads') ?? 0;
 
     _engine.onStats = (hps, total) {
       hashrate = hps;
@@ -110,6 +123,7 @@ class MinerController extends ChangeNotifier {
     await p.setString('wallet', wallet);
     await p.setString('workerName', workerName);
     await p.setString('poolPassword', poolPassword);
+    await p.setInt('threads', threads);
     log('Reglages enregistres.');
     notifyListeners();
   }
@@ -148,7 +162,10 @@ class MinerController extends ChangeNotifier {
     history.clear();
     startedAt = DateTime.now();
 
-    await _engine.start();
+    await _engine.start(effectiveThreads);
+    _setWakelock(true);
+    log('Moteur lance sur $effectiveThreads coeur(s) '
+        '(sur $availableCores disponibles).');
     _ticker?.cancel();
     _ticker = Timer.periodic(const Duration(seconds: 1), (_) {
       history.add(hashrate);
@@ -253,6 +270,7 @@ class MinerController extends ChangeNotifier {
     await _client?.disconnect();
     _client = null;
     await _engine.stop();
+    _setWakelock(false);
     status = MinerStatus.stopped;
     statusMessage = 'A l\'arret';
     hashrate = 0;
@@ -321,12 +339,28 @@ class MinerController extends ChangeNotifier {
     );
   }
 
+  void setThreads(int value) {
+    threads = value;
+    notifyListeners();
+  }
+
+  /// Empeche l'ecran de s'eteindre pendant le minage. Sans effet sur les
+  /// plateformes qui ne le supportent pas.
+  void _setWakelock(bool enable) {
+    try {
+      WakelockPlus.toggle(enable: enable);
+    } catch (_) {
+      // Plateforme non supportee : on ignore.
+    }
+  }
+
   @override
   void dispose() {
     _ticker?.cancel();
     _reconnectTimer?.cancel();
     _client?.disconnect();
     _engine.stop();
+    _setWakelock(false);
     super.dispose();
   }
 }

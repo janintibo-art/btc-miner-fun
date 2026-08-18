@@ -144,6 +144,8 @@ class _StatsGrid extends StatelessWidget {
       ],
       ['Difficulte du pool', m.poolDifficulty == 0 ? '-' : m.poolDifficulty.toStringAsFixed(3)],
       ['Travaux recus', m.jobsReceived.toString()],
+      ['Coeurs actifs', '${m.effectiveThreads} / ${m.availableCores}'],
+      ['Ecran maintenu', m.isActive ? 'oui' : 'non'],
     ];
 
     return GridView.builder(
