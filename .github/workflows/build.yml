@@ -18,6 +18,12 @@ jobs:
           channel: stable
           cache: true
 
+      # Controle instantane, sans SDK : classes privees utilisees mais jamais
+      # definies, imports morts. Il attrape en une seconde les defauts qui
+      # coutaient auparavant un cycle complet de compilation.
+      - name: Coherence des sources
+        run: python3 tool/verifier_sources.py
+
       - name: Dependances
         run: flutter pub get
 

@@ -618,3 +618,36 @@ class _ConfigScreenState extends State<ConfigScreen> {
     );
   }
 }
+
+/// Une ligne de raccourci clavier, affichee uniquement sur ordinateur.
+class _Shortcut extends StatelessWidget {
+  const _Shortcut(this.keys, this.description);
+
+  final String keys;
+  final String description;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 10),
+      child: Row(
+        children: [
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+            decoration: BoxDecoration(
+              color: AppColors.panelHigh,
+              borderRadius: BorderRadius.circular(7),
+              border: Border.all(color: AppColors.line),
+            ),
+            child: Text(keys, style: mono(size: 11.5, weight: FontWeight.w700)),
+          ),
+          const SizedBox(width: 14),
+          Expanded(
+            child: Text(description,
+                style: const TextStyle(fontSize: 12.5, color: AppColors.muted)),
+          ),
+        ],
+      ),
+    );
+  }
+}
