@@ -8,6 +8,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import '../core/bitcoin_utils.dart';
 import '../core/miner_engine.dart';
+import '../core/session.dart';
 import '../core/stratum_client.dart';
 import '../core/stratum_job.dart';
 
@@ -51,6 +52,8 @@ class MinerController extends ChangeNotifier {
   String workerName = 'telephone';
   String poolPassword = 'x';
   int threads = 0; // 0 = valeur conseillee, calculee au premier lancement
+  int intensity = 100; // 10 a 100 %
+  int autoStopMinutes = 0; // 0 = pas d'arret automatique
 
   // ---- Etat ----
   MinerStatus status = MinerStatus.stopped;
@@ -66,6 +69,12 @@ class MinerController extends ChangeNotifier {
   JobSnapshot? job;
   final List<double> history = <double>[];
   final List<String> logs = <String>[];
+  final List<MiningSession> sessions = <MiningSession>[];
+  final List<FoundShare> _pendingShares = <FoundShare>[];
+  bool _authorized = false;
+  Timer? _autoStopTimer;
+
+  int get pendingShares => _pendingShares.length;
 
   bool get isBusy => status != MinerStatus.stopped && status != MinerStatus.error;
 
@@ -98,6 +107,9 @@ class MinerController extends ChangeNotifier {
     workerName = p.getString('workerName') ?? workerName;
     poolPassword = p.getString('poolPassword') ?? poolPassword;
     threads = p.getInt('threads') ?? 0;
+    intensity = p.getInt('intensity') ?? 100;
+    autoStopMinutes = p.getInt('autoStopMinutes') ?? 0;
+    sessions.addAll(MiningSession.decodeList(p.getString('sessions') ?? '[]'));
 
     _engine.onStats = (hps, total) {
       hashrate = hps;
@@ -124,6 +136,8 @@ class MinerController extends ChangeNotifier {
     await p.setString('workerName', workerName);
     await p.setString('poolPassword', poolPassword);
     await p.setInt('threads', threads);
+    await p.setInt('intensity', intensity);
+    await p.setInt('autoStopMinutes', autoStopMinutes);
     log('Reglages enregistres.');
     notifyListeners();
   }
@@ -162,7 +176,10 @@ class MinerController extends ChangeNotifier {
     history.clear();
     startedAt = DateTime.now();
 
+    _pendingShares.clear();
+    _authorized = false;
     await _engine.start(effectiveThreads);
+    _engine.setIntensity(intensity);
     _setWakelock(true);
     log('Moteur lance sur $effectiveThreads coeur(s) '
         '(sur $availableCores disponibles).');
@@ -172,6 +189,15 @@ class MinerController extends ChangeNotifier {
       if (history.length > 60) history.removeAt(0);
       notifyListeners();
     });
+
+    if (autoStopMinutes > 0) {
+      _autoStopTimer?.cancel();
+      _autoStopTimer = Timer(Duration(minutes: autoStopMinutes), () {
+        log('Arret automatique apres $autoStopMinutes minutes.');
+        stop();
+      });
+      log('Arret automatique programme dans $autoStopMinutes minutes.');
+    }
 
     await _connect();
   }
@@ -190,6 +216,7 @@ class MinerController extends ChangeNotifier {
       _reconnectAttempts = 0;
     };
     client.onAuthorized = (ok) {
+      _authorized = ok;
       if (ok) {
         status = MinerStatus.waitingJob;
         statusMessage = 'En attente d\'un travail du pool';
@@ -208,6 +235,7 @@ class MinerController extends ChangeNotifier {
       _job = j;
       jobsReceived++;
       _pushWork();
+      _flushPendingShares();
     };
     client.onSubmitResult = (ok, reason) {
       if (ok) {
@@ -220,6 +248,7 @@ class MinerController extends ChangeNotifier {
       notifyListeners();
     };
     client.onDisconnected = (msg) {
+      _authorized = false;
       log(msg);
       _scheduleReconnect();
     };
@@ -262,7 +291,10 @@ class MinerController extends ChangeNotifier {
   }
 
   Future<void> stop() async {
+    _recordSession();
     _wantsMining = false;
+    _autoStopTimer?.cancel();
+    _autoStopTimer = null;
     _reconnectTimer?.cancel();
     _reconnectTimer = null;
     _ticker?.cancel();
@@ -331,17 +363,112 @@ class MinerController extends ChangeNotifier {
     if (share.difficulty > bestDifficulty) {
       bestDifficulty = share.difficulty;
     }
+    final client = _client;
+    if (client == null || !client.isConnected || !_authorized) {
+      _pendingShares.add(share);
+      log('Solution trouvee hors connexion : mise de cote '
+          '(${_pendingShares.length} en attente).');
+      notifyListeners();
+      return;
+    }
     log('Solution trouvee (difficulte ${share.difficulty.toStringAsFixed(3)}), '
         'envoi au pool.');
-    _client?.submit(
+    client.submit(
       worker: '${wallet.trim()}.${workerName.trim()}',
       share: share,
+    );
+  }
+
+  /// Une part ne vaut que pour le travail auquel elle repond : apres une
+  /// coupure, celles qui visaient un travail perime sont abandonnees.
+  void _flushPendingShares() {
+    if (_pendingShares.isEmpty) return;
+    final client = _client;
+    final currentJobId = _job?.jobId;
+    if (client == null || !client.isConnected || currentJobId == null) return;
+
+    var sent = 0, dropped = 0;
+    for (final share in List<FoundShare>.from(_pendingShares)) {
+      if (share.jobId == currentJobId) {
+        client.submit(
+          worker: '${wallet.trim()}.${workerName.trim()}',
+          share: share,
+        );
+        sent++;
+      } else {
+        dropped++;
+      }
+    }
+    _pendingShares.clear();
+    if (sent > 0) log('$sent part(s) en attente envoyee(s) au pool.');
+    if (dropped > 0) {
+      log('$dropped part(s) abandonnee(s) : le travail vise n\'est plus valide.');
+    }
+    notifyListeners();
+  }
+
+  void _recordSession() {
+    final started = startedAt;
+    if (started == null || totalHashes == 0) return;
+    final seconds = DateTime.now().difference(started).inSeconds;
+    if (seconds < 10) return;
+    sessions.insert(
+      0,
+      MiningSession(
+        startedAt: started,
+        seconds: seconds,
+        hashes: totalHashes,
+        averageHashrate: seconds == 0 ? 0 : totalHashes / seconds,
+        bestDifficulty: bestDifficulty,
+        accepted: accepted,
+        rejected: rejected,
+        pool: poolHost,
+        threads: effectiveThreads,
+      ),
+    );
+    while (sessions.length > 50) {
+      sessions.removeLast();
+    }
+    SharedPreferences.getInstance().then(
+      (p) => p.setString('sessions', MiningSession.encodeList(sessions)),
     );
   }
 
   void setThreads(int value) {
     threads = value;
     notifyListeners();
+  }
+
+  void setIntensity(int value) {
+    intensity = value.clamp(10, 100);
+    _engine.setIntensity(intensity);
+    notifyListeners();
+  }
+
+  void setAutoStopMinutes(int value) {
+    autoStopMinutes = value;
+    notifyListeners();
+  }
+
+  Future<void> clearSessions() async {
+    sessions.clear();
+    final p = await SharedPreferences.getInstance();
+    await p.remove('sessions');
+    log('Historique efface.');
+    notifyListeners();
+  }
+
+  /// Totaux cumules de toutes les sessions conservees.
+  ({int hashes, int seconds, int accepted, double best}) get lifetime {
+    var hashes = 0, seconds = 0, accepted = 0;
+    var best = 0.0;
+    for (final s in sessions) {
+      hashes += s.hashes;
+      seconds += s.seconds;
+      accepted += s.accepted;
+      if (s.bestDifficulty > best) best = s.bestDifficulty;
+    }
+    return (hashes: hashes, seconds: seconds, accepted: accepted, best: best);
   }
 
   /// Empeche l'ecran de s'eteindre pendant le minage. Sans effet sur les
@@ -358,6 +485,7 @@ class MinerController extends ChangeNotifier {
   void dispose() {
     _ticker?.cancel();
     _reconnectTimer?.cancel();
+    _autoStopTimer?.cancel();
     _client?.disconnect();
     _engine.stop();
     _setWakelock(false);

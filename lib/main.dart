@@ -5,6 +5,7 @@ import 'app_theme.dart';
 import 'screens/about_screen.dart';
 import 'screens/config_screen.dart';
 import 'screens/dashboard_screen.dart';
+import 'screens/history_screen.dart';
 import 'screens/tutorial_screen.dart';
 import 'state/miner_controller.dart';
 
@@ -40,7 +41,13 @@ class RootShell extends StatefulWidget {
 class _RootShellState extends State<RootShell> {
   int _index = 0;
 
-  static const _titles = ['Minage', 'Reglages', 'Tutoriel', 'A propos'];
+  static const _titles = [
+    'Minage',
+    'Sessions',
+    'Reglages',
+    'Tutoriel',
+    'A propos'
+  ];
 
   @override
   Widget build(BuildContext context) {
@@ -76,6 +83,7 @@ class _RootShellState extends State<RootShell> {
           index: _index,
           children: const [
             DashboardScreen(),
+            HistoryScreen(),
             ConfigScreen(),
             TutorialScreen(),
             AboutScreen(),
@@ -104,6 +112,11 @@ class _RootShellState extends State<RootShell> {
                   icon: Icon(Icons.bolt_outlined),
                   selectedIcon: Icon(Icons.bolt_rounded, color: AppColors.amber),
                   label: 'Minage'),
+              NavigationDestination(
+                  icon: Icon(Icons.history_outlined),
+                  selectedIcon:
+                      Icon(Icons.history_rounded, color: AppColors.amber),
+                  label: 'Sessions'),
               NavigationDestination(
                   icon: Icon(Icons.tune_outlined),
                   selectedIcon: Icon(Icons.tune_rounded, color: AppColors.amber),

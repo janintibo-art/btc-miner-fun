@@ -12,10 +12,11 @@ Interface soignee, onglet tutoriel integre, mode demo hors ligne et mode pool re
 - **Inspecteur de bloc** : l'en-tete sur lequel tu travailles, champ par champ, avec
   l'explication de chaque valeur. Rien n'est simule.
 - **Multi-coeurs** : un isolate par coeur demande, l'interface ne gele jamais.
-- Reconnexion automatique au pool, avec delai croissant.
+- Reconnexion automatique au pool, avec file d'attente des parts trouvees hors ligne.
+- Reglage d'intensite, arret automatique programmable, historique des sessions.
 - Tableau de bord : puissance de calcul, courbe 60 s, parts, meilleure difficulte, journal.
 - Ecran maintenu allume pendant le minage, icone d'application dediee.
-- Onglet tutoriel en 9 chapitres.
+- Onglet tutoriel en 10 chapitres.
 - **Tests automatiques** : les calculs sont verifies contre le vrai bloc 125552
   de la chaine Bitcoin avant chaque compilation.
 
@@ -37,7 +38,7 @@ btc-miner-fun/
 │   │   ├── stratum_client.dart   Client Stratum V1 (TCP + JSON-RPC)
 │   │   └── miner_engine.dart     Boucle de hachage dans un isolate
 │   ├── state/miner_controller.dart
-│   ├── screens/                  Minage, Reglages, Tutoriel, A propos
+│   ├── screens/                  Minage, Sessions, Reglages, Tutoriel, A propos
 │   └── widgets/                  Carte, courbe, console, inspecteur
 ├── docs/TERMUX.md                Toutes les commandes, une par une
 ├── docs/ROADMAP.md               Les etapes suivantes
@@ -53,7 +54,9 @@ regenere a chaque compilation avec `flutter create`.
 1. Pousse le code sur la branche `main` (voir `docs/TERMUX.md`).
 2. Onglet **Actions** du depot : le workflow demarre tout seul.
 3. Une fois les deux jobs verts, section **Artifacts** :
-   - `BTCMinerFun-android-apk` → l'APK a installer
+   - `BTCMinerFun-android-apk` → les APK. Prends `app-arm64-v8a-release.apk`
+     (tous les telephones recents). En cas de refus d'installation, prends
+     `app-release.apk`, l'universel, qui fonctionne partout mais pese le triple.
    - `BTCMinerFun-windows` → le dossier avec le `.exe`
 
 Sur Android, autorise l'installation depuis une source inconnue pour ton
@@ -61,6 +64,6 @@ gestionnaire de fichiers.
 
 ## Etat du projet
 
-Etape 3 terminee : minage multi-coeurs, tests automatiques sur un bloc reel,
-icone et executable nommes, ecran maintenu allume.
+Etape 4 terminee : file d'attente des parts, intensite reglable, arret
+automatique, historique des sessions, APK decoupes par architecture.
 Voir `docs/ROADMAP.md` pour la suite.

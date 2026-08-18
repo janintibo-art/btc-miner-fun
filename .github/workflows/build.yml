@@ -70,13 +70,22 @@ jobs:
       - name: Patcher le manifeste Android
         run: python3 tool/patch_android.py
 
-      - name: Construire l'APK
+      - name: Construire les APK par architecture
+        run: flutter build apk --release --split-per-abi
+
+      - name: Construire l'APK universel (filet de securite)
         run: flutter build apk --release
+
+      - name: Rassembler les APK
+        run: |
+          mkdir -p dist
+          cp build/app/outputs/flutter-apk/*.apk dist/
+          ls -lh dist
 
       - uses: actions/upload-artifact@v4
         with:
           name: BTCMinerFun-android-apk
-          path: build/app/outputs/flutter-apk/app-release.apk
+          path: dist/*.apk
           if-no-files-found: error
 
   windows:

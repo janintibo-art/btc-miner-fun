@@ -236,6 +236,72 @@ class _ConfigScreenState extends State<ConfigScreen> {
                 'coeurs. Si le telephone chauffe, redescends.',
                 style: TextStyle(fontSize: 12, height: 1.5, color: AppColors.muted),
               ),
+              const Divider(height: 30),
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.end,
+                children: [
+                  Text('${m.intensity} %',
+                      style: mono(size: 26, weight: FontWeight.w700)),
+                  const SizedBox(width: 8),
+                  const Padding(
+                    padding: EdgeInsets.only(bottom: 4),
+                    child: Text('d\'intensite',
+                        style: TextStyle(
+                            fontSize: 13, fontWeight: FontWeight.w600)),
+                  ),
+                ],
+              ),
+              Slider(
+                value: m.intensity.toDouble(),
+                min: 10,
+                max: 100,
+                divisions: 9,
+                activeColor: AppColors.amber,
+                label: '${m.intensity} %',
+                onChanged: (v) => m.setIntensity(v.round()),
+              ),
+              const Text(
+                'A 100 %, les coeurs tournent en continu. En dessous, le moteur '
+                'marque une pause apres chaque lot de calculs : la puissance '
+                'baisse d\'autant, la temperature aussi. Ce reglage s\'applique '
+                'immediatement, meme pendant le minage.',
+                style: TextStyle(fontSize: 12, height: 1.5, color: AppColors.muted),
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: 18),
+        const SectionLabel('Arret automatique'),
+        AppCard(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Wrap(
+                spacing: 8,
+                runSpacing: 8,
+                children: const [0, 15, 30, 60, 120].map((minutes) {
+                  final selected = m.autoStopMinutes == minutes;
+                  return ChoiceChip(
+                    selected: selected,
+                    onSelected: locked ? null : (_) => m.setAutoStopMinutes(minutes),
+                    backgroundColor: AppColors.panelHigh,
+                    selectedColor: AppColors.amber,
+                    side: const BorderSide(color: AppColors.line),
+                    labelStyle: TextStyle(
+                      fontSize: 12.5,
+                      fontWeight: FontWeight.w700,
+                      color: selected ? Colors.black : AppColors.muted,
+                    ),
+                    label: Text(minutes == 0 ? 'Jamais' : '$minutes min'),
+                  );
+                }).toList(),
+              ),
+              const SizedBox(height: 12),
+              const Text(
+                'Le minage s\'arrete tout seul apres ce delai. Pratique pour '
+                'laisser tourner sans vider la batterie ni chauffer la nuit.',
+                style: TextStyle(fontSize: 12, height: 1.5, color: AppColors.muted),
+              ),
             ],
           ),
         ),

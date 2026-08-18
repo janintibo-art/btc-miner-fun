@@ -16,6 +16,7 @@ class MinerEngine {
   ReceivePort? _rx;
   Completer<void>? _ready;
   int _workerCount = 1;
+  int _intensity = 100;
 
   void Function(double hashrate, int totalHashes)? onStats;
   void Function(FoundShare share)? onShare;
@@ -40,6 +41,7 @@ class MinerEngine {
       switch (msg['type']) {
         case 'hello':
           _ports[index] = msg['port'] as SendPort;
+          _ports[index]!.send({'type': 'intensity', 'value': _intensity});
           _ports[index]!.send({'type': 'start'});
           if (_ports.length == _workerCount && !ready.isCompleted) {
             ready.complete();
@@ -85,6 +87,16 @@ class MinerEngine {
     }
   }
 
+  /// Intensite de 10 a 100 % : en dessous de 100, chaque isolate marque une
+  /// pause proportionnelle apres chaque lot de hachages. Moins de chaleur,
+  /// moins de batterie.
+  void setIntensity(int percent) {
+    _intensity = percent.clamp(10, 100);
+    for (final p in _ports.values) {
+      p.send({'type': 'intensity', 'value': _intensity});
+    }
+  }
+
   void pause() {
     for (final p in _ports.values) {
       p.send({'type': 'pause'});
@@ -126,6 +138,7 @@ void _minerEntryPoint(List<dynamic> args) {
   var nTime = '';
   var nonce = 0;
   var stride = 1;
+  var intensity = 100;
   var totalHashes = 0;
   var running = false;
   var looping = false;
@@ -143,6 +156,7 @@ void _minerEntryPoint(List<dynamic> args) {
         continue;
       }
 
+      final batchStart = DateTime.now().microsecondsSinceEpoch;
       for (var i = 0; i < 1000; i++) {
         h[76] = nonce & 0xff;
         h[77] = (nonce >> 8) & 0xff;
@@ -162,6 +176,13 @@ void _minerEntryPoint(List<dynamic> args) {
           });
         }
         nonce = (nonce + stride) & 0xFFFFFFFF;
+      }
+
+      if (intensity < 100) {
+        final elapsed = DateTime.now().microsecondsSinceEpoch - batchStart;
+        final rest = (elapsed * (100 - intensity) / intensity).round();
+        await Future<void>.delayed(
+            Duration(microseconds: rest.clamp(0, 400000)));
       }
 
       final now = DateTime.now().millisecondsSinceEpoch;
@@ -196,6 +217,9 @@ void _minerEntryPoint(List<dynamic> args) {
       case 'start':
         running = true;
         if (!looping) loop();
+        break;
+      case 'intensity':
+        intensity = (msg['value'] as int).clamp(10, 100);
         break;
       case 'pause':
         header = null;

@@ -27,10 +27,19 @@
 - Ecran maintenu allume pendant le minage
 - Icone d'application et executable nomme BTCMinerFun.exe
 
-## Etape 4 - a faire
+## Etape 4 - terminee
+
+- File d'attente des parts trouvees pendant une coupure reseau,
+  avec abandon de celles qui visent un travail perime
+- Intensite reglable de 10 a 100 % : pauses intercalees entre les lots
+  de hachages, applicable en cours de minage
+- Arret automatique programmable (15, 30, 60, 120 minutes)
+- Historique des sessions sur l'appareil, avec totaux cumules
+- APK decoupes par architecture : environ 8 Mo au lieu de 22 Mo
+
+## Etape 5 - a faire
 
 - Service de premier plan Android pour miner ecran eteint
-- Limiteur thermique : ralentir automatiquement quand l'appareil chauffe
-- File d'attente des parts en cas de coupure reseau
-- Historique des sessions et statistiques cumulees
+- Lecture de la temperature de la batterie pour brider automatiquement
 - Signature de l'APK pour distribution hors GitHub
+- Publication automatique d'une release GitHub sur tag de version

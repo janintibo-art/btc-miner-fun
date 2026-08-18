@@ -133,6 +133,20 @@ const _chapters = <_ChapterData>[
     Icons.developer_board_rounded,
   ),
   _ChapterData(
+    'Laisser tourner sans surveillance',
+    'Trois reglages servent a miner longtemps sans abimer l\'appareil :\n\n'
+        'L\'intensite reduit la cadence en intercalant des pauses. A 50 %, tu '
+        'produis moitie moins de hachages mais l\'appareil reste tiede.\n\n'
+        'L\'arret automatique coupe le minage apres un delai choisi.\n\n'
+        'La file d\'attente garde les solutions trouvees pendant une coupure '
+        'reseau et les envoie des le retour du pool. Celles qui visaient un '
+        'travail perime sont abandonnees : une part ne vaut que pour le bloc '
+        'auquel elle repond.\n\n'
+        'Chaque session de plus de dix secondes est ensuite archivee dans '
+        'l\'onglet Sessions, sur l\'appareil uniquement.',
+    Icons.schedule_rounded,
+  ),
+  _ChapterData(
     'Compiler l\'APK et le .exe',
     'Le projet est compile par GitHub Actions, pas par ton telephone. A chaque '
         'envoi de code sur la branche main, GitHub construit :\n\n'
