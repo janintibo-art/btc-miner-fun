@@ -61,3 +61,40 @@ if resources.exists():
     )
     resources.write_text(text, encoding="utf-8")
     print("Proprietes de l'executable mises a jour.")
+
+
+# --- Pont natif de detection des cartes graphiques -------------------------
+#
+# Le fichier C++ vit dans tool/native/ pour rester versionne, et il est copie
+# dans le projet Windows regenere a chaque compilation. La bibliotheque est
+# construite a cote de l'executable, puis chargee a l'execution par Dart.
+source = pathlib.Path("tool/native/gpu_probe.cpp")
+runner = pathlib.Path("windows/runner")
+
+if source.exists() and runner.exists():
+    destination = runner / "gpu_probe.cpp"
+    destination.write_text(source.read_text(encoding="utf-8"), encoding="utf-8")
+    print("gpu_probe.cpp copie dans windows/runner.")
+
+    windows_cmake = pathlib.Path("windows/CMakeLists.txt")
+    if windows_cmake.exists():
+        cmake_text = windows_cmake.read_text(encoding="utf-8")
+        if "gpu_probe" not in cmake_text:
+            cmake_text = cmake_text.rstrip() + """
+
+# --- Pont natif GPU (ajoute par tool/patch_windows.py) ---
+# OpenCL est charge dynamiquement a l'execution : aucune dependance de
+# compilation, et l'application demarre normalement sur une machine sans
+# pilote compatible.
+add_library(gpu_probe SHARED "runner/gpu_probe.cpp")
+set_target_properties(gpu_probe PROPERTIES
+  RUNTIME_OUTPUT_DIRECTORY "$<TARGET_FILE_DIR:${BINARY_NAME}>"
+)
+add_dependencies(${BINARY_NAME} gpu_probe)
+install(TARGETS gpu_probe RUNTIME DESTINATION "${INSTALL_BUNDLE_LIB_DIR}"
+  COMPONENT Runtime)
+"""
+            windows_cmake.write_text(cmake_text, encoding="utf-8")
+            print("CMakeLists : cible gpu_probe ajoutee.")
+        else:
+            print("CMakeLists : cible gpu_probe deja presente.")

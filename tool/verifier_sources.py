@@ -36,6 +36,8 @@ SYMBOLES = {
     "nonce_walker": "NonceStrategy",
     "hash_mode": "HashMode",
     "session": "MiningSession",
+    "gpu_probe": "probeGpuDevices",
+    "hardware_card": "HardwareCard",
 }
 
 STANDARD = {
@@ -45,6 +47,7 @@ STANDARD = {
     "dart:typed_data": ["Uint8List", "Uint32List", "ByteData"],
     "dart:convert": ["jsonEncode", "jsonDecode", "utf8", "LineSplitter", "base64"],
     "dart:isolate": ["Isolate", "SendPort", "ReceivePort"],
+    "dart:ffi": ["DynamicLibrary", "Pointer", "Int32", "Uint8"],
     "dart:async": ["Future", "Timer", "Stream", "Completer", "unawaited"],
 }
 
