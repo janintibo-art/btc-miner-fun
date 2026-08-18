@@ -19,7 +19,7 @@ class AboutSection extends StatelessWidget {
               Text('BTC Miner Fun',
                   style: mono(size: 24, weight: FontWeight.w700)),
               const SizedBox(height: 6),
-              Text('Version 0.8.0 - licence MIT',
+              Text('Version 0.9.0 - licence MIT',
                   style: mono(size: 12, color: AppColors.muted)),
               const SizedBox(height: 16),
               const Text(
@@ -42,6 +42,7 @@ class AboutSection extends StatelessWidget {
         const _Fact('Compilation', 'GitHub Actions : tests, APK Android, .exe Windows'),
         const _Fact('Verification', 'Calculs testes contre le vrai bloc 125552'),
         const _Fact('Arriere-plan', 'Service de premier plan Android en Kotlin'),
+        const _Fact('Adresses', 'Verification bech32, bech32m et base58check'),
         const _Fact('Conversion', 'Cours CoinGecko et reseau mempool.space, cache hors ligne'),
         const _Fact('Historique', 'Sessions conservees sur l\'appareil, rien n\'est envoye'),
         const SizedBox(height: 16),

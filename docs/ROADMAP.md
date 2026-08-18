@@ -79,7 +79,18 @@
   avec le delai moyen avant un bloc
 - Navigation reorganisee en cinq onglets, la presentation rejoint le guide
 
-## Etape 9 - a faire
+## Etape 9 - terminee
+
+- Assistant portefeuille : guide de creation en cinq etapes, mise en garde
+  contre les classements remuneres, regles de sauvegarde de la phrase
+- Verification reelle des adresses : checksum bech32 (BIP 173), bech32m
+  (BIP 350) et base58check recalcules, detection du type d'adresse,
+  refus du reseau de test et des autres chaines
+- Messages d'erreur explicites plutot qu'un simple "invalide"
+- QR code de l'adresse et copie en un geste
+- Choix assume : l'application ne genere aucune cle privee
+
+## Etape 10 - a faire
 
 - Lecture de la temperature de la batterie pour brider automatiquement
 - Bouton d'arret directement dans la notification

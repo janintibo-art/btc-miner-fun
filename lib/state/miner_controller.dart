@@ -6,6 +6,7 @@ import 'package:flutter/foundation.dart';
 import 'package:wakelock_plus/wakelock_plus.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import '../core/address_validator.dart';
 import '../core/bitcoin_utils.dart';
 import '../core/benchmark.dart';
 import '../core/foreground_service.dart';
@@ -104,12 +105,10 @@ class MinerController extends ChangeNotifier {
   Duration get uptime =>
       startedAt == null ? Duration.zero : DateTime.now().difference(startedAt!);
 
-  /// Verification de forme uniquement : longueur et prefixe plausibles.
-  bool get walletLooksValid {
-    final w = wallet.trim();
-    if (w.length < 26 || w.length > 62) return false;
-    return w.startsWith('bc1') || w.startsWith('1') || w.startsWith('3');
-  }
+  /// Verification complete : le code de controle de l'adresse est recalcule.
+  AddressCheck get walletCheck => checkBitcoinAddress(wallet);
+
+  bool get walletLooksValid => walletCheck.valid;
 
   // ---------------------------------------------------------------------------
 
@@ -182,7 +181,8 @@ class MinerController extends ChangeNotifier {
     if (!walletLooksValid) {
       status = MinerStatus.error;
       statusMessage = 'Adresse Bitcoin invalide';
-      log('Verifie ton adresse dans Reglages : elle doit commencer par bc1, 1 ou 3.');
+      log('Adresse refusee : ${walletCheck.message}');
+      log('Ouvre l\'assistant portefeuille dans Reglages pour la verifier.');
       notifyListeners();
       return;
     }

@@ -2,10 +2,12 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../app_theme.dart';
+import '../core/address_validator.dart';
 import '../core/hash_mode.dart';
 import '../core/nonce_walker.dart';
 import '../state/miner_controller.dart';
 import '../widgets/app_card.dart';
+import 'wallet_screen.dart';
 
 class ConfigScreen extends StatefulWidget {
   const ConfigScreen({super.key});
@@ -82,6 +84,35 @@ class _ConfigScreenState extends State<ConfigScreen> {
       children: [
         const SectionLabel('Ou vont les gains'),
         AppCard(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+          child: ListTile(
+            contentPadding: EdgeInsets.zero,
+            onTap: () => Navigator.of(context).push(
+              MaterialPageRoute<void>(builder: (_) => const WalletScreen()),
+            ),
+            leading: const Icon(Icons.account_balance_wallet_rounded,
+                color: AppColors.amber),
+            title: const Text('Assistant portefeuille',
+                style: TextStyle(fontSize: 14.5, fontWeight: FontWeight.w700)),
+            subtitle: Text(
+              m.wallet.trim().isEmpty
+                  ? 'Pas encore de portefeuille ? Commence ici.'
+                  : (m.walletCheck.valid
+                      ? m.walletCheck.type
+                      : 'Adresse a verifier'),
+              style: TextStyle(
+                fontSize: 12,
+                color: m.wallet.trim().isEmpty || m.walletCheck.valid
+                    ? AppColors.muted
+                    : AppColors.coral,
+              ),
+            ),
+            trailing:
+                const Icon(Icons.chevron_right_rounded, color: AppColors.muted),
+          ),
+        ),
+        const SizedBox(height: 12),
+        AppCard(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -97,6 +128,36 @@ class _ConfigScreenState extends State<ConfigScreen> {
                   helperMaxLines: 3,
                 ),
               ),
+              if (_wallet.text.trim().isNotEmpty) ...[
+                const SizedBox(height: 10),
+                Builder(builder: (context) {
+                  final check = checkBitcoinAddress(_wallet.text);
+                  return Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Icon(
+                        check.valid
+                            ? Icons.check_circle_rounded
+                            : Icons.error_outline_rounded,
+                        size: 15,
+                        color: check.valid ? AppColors.mint : AppColors.coral,
+                      ),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          check.valid ? check.type : check.message,
+                          style: TextStyle(
+                            fontSize: 11.5,
+                            height: 1.4,
+                            color:
+                                check.valid ? AppColors.mint : AppColors.coral,
+                          ),
+                        ),
+                      ),
+                    ],
+                  );
+                }),
+              ],
               const SizedBox(height: 14),
               TextField(
                 controller: _worker,

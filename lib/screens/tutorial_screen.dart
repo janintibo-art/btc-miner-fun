@@ -219,6 +219,21 @@ const _chapters = <_ChapterData>[
     Icons.euro_rounded,
   ),
   _ChapterData(
+    'Ton portefeuille, tes cles',
+    'Un portefeuille ne contient pas de bitcoins : il contient les cles qui '
+        'permettent de depenser ceux inscrits sur la chaine. Perdre les cles, '
+        'c\'est perdre les fonds, sans recours ni service client.\n\n'
+        'Ces cles derivent toutes d\'une phrase de recuperation de douze ou '
+        'vingt-quatre mots. Elle se note sur papier, une seule fois, et ne se '
+        'saisit jamais ailleurs que dans ton portefeuille.\n\n'
+        'Cette application ne genere volontairement aucune cle : un defaut de '
+        'generation coute la totalite des fonds, contrairement a un defaut de '
+        'minage qui coute quelques parts. L\'assistant portefeuille, dans '
+        'Reglages, te guide vers un logiciel dedie puis verifie reellement ton '
+        'adresse en recalculant son code de controle.',
+    Icons.key_rounded,
+  ),
+  _ChapterData(
     'Compiler l\'APK et le .exe',
     'Le projet est compile par GitHub Actions, pas par ton telephone. A chaque '
         'envoi de code sur la branche main, GitHub construit :\n\n'
