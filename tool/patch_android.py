@@ -329,30 +329,85 @@ MANIFEST.write_text(text, encoding="utf-8")
 print("Manifeste mis a jour (foreground service specialUse + backup desactive).")
 
 # --------------------------------------------------------------------------
-# 5. flutter_secure_storage 11 exige Android API 23 minimum.
+# 5. Versions du SDK Android.
+#
+#    flutter_secure_storage 11 se compile contre l'API 37 et refuse de se lier
+#    a une application compilee contre une version anterieure. Flutter, lui,
+#    propose encore 36 par defaut. Il faut donc remonter compileSdk, et
+#    neutraliser l'avertissement du plugin Gradle qui considere 36 comme son
+#    maximum recommande : c'est un avertissement, pas une incompatibilite.
 # --------------------------------------------------------------------------
+COMPILE_SDK = 37
+MIN_SDK = 24
+
 gradle_kts = pathlib.Path("android/app/build.gradle.kts")
 gradle_groovy = pathlib.Path("android/app/build.gradle")
 
 if gradle_kts.exists():
     gradle = gradle_kts.read_text(encoding="utf-8")
-    gradle = re.sub(
-        r'minSdk\s*=\s*flutter\.minSdkVersion',
-        'minSdk = maxOf(flutter.minSdkVersion, 24)',
+
+    gradle, n_min = re.subn(
+        r"minSdk\s*=\s*flutter\.minSdkVersion",
+        "minSdk = maxOf(flutter.minSdkVersion, {0})".format(MIN_SDK),
         gradle,
         count=1,
     )
+    gradle, n_compile = re.subn(
+        r"compileSdk\s*=\s*flutter\.compileSdkVersion",
+        "compileSdk = maxOf(flutter.compileSdkVersion, {0})".format(COMPILE_SDK),
+        gradle,
+        count=1,
+    )
+    if n_compile == 0 and "compileSdk = maxOf(" not in gradle:
+        # Certaines versions ecrivent un nombre en dur.
+        gradle, n_compile = re.subn(
+            r"compileSdk\s*=\s*\d+",
+            "compileSdk = {0}".format(COMPILE_SDK),
+            gradle,
+            count=1,
+        )
+
     gradle_kts.write_text(gradle, encoding="utf-8")
-    print("minSdk Android garanti >= 24 (Kotlin DSL).")
+    print("Gradle (Kotlin DSL) : minSdk >= {0} ({1} remplacement), "
+          "compileSdk >= {2} ({3} remplacement).".format(
+              MIN_SDK, n_min, COMPILE_SDK, n_compile))
 elif gradle_groovy.exists():
     gradle = gradle_groovy.read_text(encoding="utf-8")
     gradle = re.sub(
-        r'minSdkVersion\s+flutter\.minSdkVersion',
-        'minSdkVersion Math.max(flutter.minSdkVersion, 23)',
+        r"minSdkVersion\s+flutter\.minSdkVersion",
+        "minSdkVersion Math.max(flutter.minSdkVersion, {0})".format(MIN_SDK),
+        gradle,
+        count=1,
+    )
+    gradle = re.sub(
+        r"compileSdkVersion\s+flutter\.compileSdkVersion",
+        "compileSdkVersion {0}".format(COMPILE_SDK),
         gradle,
         count=1,
     )
     gradle_groovy.write_text(gradle, encoding="utf-8")
-    print("minSdk Android garanti >= 23 (Groovy).")
+    print("Gradle (Groovy) : minSdk et compileSdk ajustes.")
 else:
-    print("Attention : build.gradle Android introuvable, minSdk non verifie.")
+    print("Attention : build.gradle Android introuvable, SDK non verifie.")
+
+# --------------------------------------------------------------------------
+# 6. Silence l'avertissement bloquant du plugin Gradle sur compileSdk 37.
+# --------------------------------------------------------------------------
+properties = pathlib.Path("android/gradle.properties")
+if properties.exists():
+    content = properties.read_text(encoding="utf-8")
+    ligne = "android.suppressUnsupportedCompileSdk={0}".format(COMPILE_SDK)
+    if "suppressUnsupportedCompileSdk" not in content:
+        if content and not content.endswith("\n"):
+            content += "\n"
+        content += ligne + "\n"
+        properties.write_text(content, encoding="utf-8")
+        print("gradle.properties : avertissement compileSdk neutralise.")
+    else:
+        print("gradle.properties : deja configure.")
+else:
+    properties.write_text(
+        "android.suppressUnsupportedCompileSdk={0}\n".format(COMPILE_SDK),
+        encoding="utf-8",
+    )
+    print("gradle.properties cree.")
