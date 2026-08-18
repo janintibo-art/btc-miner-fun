@@ -19,7 +19,6 @@ class _ConverterScreenState extends State<ConverterScreen> {
   final _btc = TextEditingController();
   final _eur = TextEditingController();
   final _manual = TextEditingController();
-  bool _editingBtc = true;
 
   @override
   void dispose() {
@@ -32,7 +31,6 @@ class _ConverterScreenState extends State<ConverterScreen> {
   void _fromBtc(MinerController m) {
     final rate = m.market?.eurPerBtc ?? 0;
     final value = double.tryParse(_btc.text.replaceAll(',', '.')) ?? 0;
-    _editingBtc = true;
     _eur.text = rate <= 0 ? '' : (value * rate).toStringAsFixed(2);
     setState(() {});
   }
@@ -40,7 +38,6 @@ class _ConverterScreenState extends State<ConverterScreen> {
   void _fromEur(MinerController m) {
     final rate = m.market?.eurPerBtc ?? 0;
     final value = double.tryParse(_eur.text.replaceAll(',', '.')) ?? 0;
-    _editingBtc = false;
     _btc.text = rate <= 0 ? '' : formatBtc(value / rate);
     setState(() {});
   }

@@ -687,7 +687,8 @@ class MinerController extends ChangeNotifier {
   Future<void> _recordSession() async {
     final started = startedAt;
     if (started == null || totalHashes == 0) return;
-    final seconds = max(1, DateTime.now().difference(started).inSeconds);
+    final int seconds =
+        math.max(1, DateTime.now().difference(started).inSeconds);
 
     // Les totaux "Depuis le debut" sont conserves independamment des 50
     // sessions affichees. Ils ne disparaissent donc plus quand la liste tourne.

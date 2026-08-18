@@ -33,3 +33,21 @@ L'analyse produisait 90 remarques, dont 87 rappels de style sur `withOpacity`.
 Les trois vraies erreurs etaient noyees au milieu. `deprecated_member_use` est
 desormais ignore dans `analysis_options.yaml` : le rapport d'analyse ne
 contiendra plus que ce qui merite une correction.
+
+
+## Suite : v19
+
+Le nettoyage de l'analyse a immediatement porte ses fruits : le rapport est
+passe de 90 lignes a 3, et les deux erreurs restantes sont apparues clairement.
+
+- `max(...)` venait lui aussi de `dart:math` : avec le prefixe ajoute en v18,
+  il fallait ecrire `math.max(...)`. La seconde erreur, un `double` affecte a un
+  `int`, en decoulait directement, le type de retour n'etant plus resolu. Le
+  type de la variable est desormais explicite.
+- `_editingBtc`, dans l'ecran de conversion, etait ecrit mais jamais lu :
+  vestige d'une premiere version ou la conversion memorisait le sens de saisie.
+  Champ supprime.
+
+Un balayage a ensuite verifie qu'aucun appel a `dart:math` ne subsiste sans
+prefixe dans le controleur, et qu'aucun autre fichier ne combine `dart:math`
+avec une methode `log` locale.
