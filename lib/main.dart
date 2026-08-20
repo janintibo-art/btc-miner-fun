@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import 'app_theme.dart';
 import 'core/app_version.dart';
@@ -61,6 +62,33 @@ class _RootShellState extends State<RootShell> {
   final FocusNode _shortcutFocus = FocusNode();
 
   @override
+  void initState() {
+    super.initState();
+    _restaurerOnglet();
+  }
+
+  /// Android peut recreer l'activite a tout moment - au retour d'une autre
+  /// application, par exemple. Sans cela, l'ecran repartait toujours du
+  /// premier onglet.
+  Future<void> _restaurerOnglet() async {
+    final prefs = await SharedPreferences.getInstance();
+    final onglet = prefs.getInt('ongletActif') ?? 0;
+    if (mounted && onglet >= 0 && onglet < _titles.length) {
+      setState(() => _index = onglet);
+    }
+  }
+
+  Future<void> _memoriserOnglet(int index) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setInt('ongletActif', index);
+  }
+
+  void _changerOnglet(int index) {
+    setState(() => _index = index);
+    _memoriserOnglet(index);
+  }
+
+  @override
   void dispose() {
     _shortcutFocus.dispose();
     super.dispose();
@@ -88,7 +116,7 @@ class _RootShellState extends State<RootShell> {
             LogicalKeyboardKey.digit7,
           ][i],
           control: true,
-        ): () => setState(() => _index = i),
+        ): () => _changerOnglet(i),
     };
   }
 
@@ -236,7 +264,7 @@ class _RootShellState extends State<RootShell> {
                         children: [
                           _ReactorRail(
                             index: _index,
-                            onSelected: (i) => setState(() => _index = i),
+                            onSelected: _changerOnglet,
                           ),
                           Expanded(child: content),
                         ],
@@ -252,7 +280,7 @@ class _RootShellState extends State<RootShell> {
           ? null
           : _ReactorNavigation(
               index: _index,
-              onSelected: (i) => setState(() => _index = i),
+              onSelected: _changerOnglet,
             ),
     );
   }

@@ -4,8 +4,10 @@ import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../core/chain_network.dart';
+import '../core/foreground_service.dart';
 import '../core/my_chain.dart';
 import '../core/my_chain_miner.dart';
+import '../core/platform_profile.dart';
 
 /// Pilote la chaine personnelle : creation, minage, verification.
 ///
@@ -32,7 +34,16 @@ class ChainController extends ChangeNotifier {
   bool get isShared => serverUrl.trim().isNotEmpty;
   ChainNetwork get _network => ChainNetwork(serverUrl);
 
-  static const int _batch = 120000;
+  /// Lot par coeur. Plus il est grand, moins le cout de creation des
+  /// isolates pese sur le debit ; trop grand, l'arret devient lent a repondre.
+  static const int _batch = 400000;
+
+  /// Coeurs utilises. Le minage de la chaine personnelle n'en utilisait qu'un
+  /// seul : c'est ce qui expliquait un debit dix fois inferieur a celui du
+  /// minage reel.
+  int get threads => PlatformProfile.recommendedThreads;
+
+  bool _serviceActif = false;
 
   bool get exists => chain != null && chain!.blocks.isNotEmpty;
 
@@ -178,6 +189,15 @@ class ChainController extends ChangeNotifier {
     _stopRequested = false;
     notifyListeners();
 
+    // Sans service de premier plan, Android tue l'application des qu'elle
+    // passe en arriere-plan : le minage s'arrete et l'ecran repart de zero.
+    if (ForegroundService.isSupported) {
+      _serviceActif = await ForegroundService.start(
+        title: '${current.rules.name} - minage en cours',
+        text: 'Bloc ${current.height} en preparation',
+      );
+    }
+
     while (!_stopRequested) {
       final candidate = current.prepareNext(DateTime.now(), message);
       final header = candidate.header();
@@ -188,19 +208,44 @@ class ChainController extends ChangeNotifier {
 
       var found = false;
       while (!_stopRequested && !found) {
-        final result = await mineChainBatch(
-          header: header,
-          bits: candidate.bits,
-          startNonce: nonce,
-          count: _batch,
-        );
-        hashes += result.hashes;
-        nonce = result.nonce;
+        // Un lot par coeur, sur des plages de nonces disjointes : les
+        // isolates travaillent en parallele au lieu de se relayer.
+        final lots = <Future<ChainMiningResult>>[];
+        for (var coeur = 0; coeur < threads; coeur++) {
+          lots.add(mineChainBatch(
+            header: header,
+            bits: candidate.bits,
+            startNonce: (nonce + coeur * _batch) & 0xFFFFFFFF,
+            count: _batch,
+          ));
+        }
+        final resultats = await Future.wait(lots);
+
+        ChainMiningResult? gagnant;
+        for (final r in resultats) {
+          hashes += r.hashes;
+          if (r.found && gagnant == null) gagnant = r;
+        }
+        final result = gagnant ??
+            ChainMiningResult(
+                found: false,
+                nonce: (nonce + threads * _batch) & 0xFFFFFFFF,
+                hashes: 0);
+        nonce = result.found
+            ? result.nonce
+            : (nonce + threads * _batch) & 0xFFFFFFFF;
         hashesOnCurrentBlock = hashes;
         currentNonce = nonce;
 
         final elapsed = DateTime.now().difference(start).inMilliseconds;
         hashrate = elapsed <= 0 ? 0 : hashes * 1000 / elapsed;
+        if (_serviceActif) {
+          ForegroundService.update(
+            title: '${_formatCount(hashes)} tentatives',
+            text: 'Bloc ${candidate.height} - '
+                '${(hashrate / 1000).toStringAsFixed(1)} kH/s',
+          );
+        }
         notifyListeners();
 
         if (result.found) {
@@ -240,14 +285,19 @@ class ChainController extends ChangeNotifier {
           notifyListeners();
         }
 
-        // Le nonce ne fait que 32 bits : au bout du compte, on change
-        // l'horodatage du bloc pour repartir sur un espace neuf.
-        if (!found && nonce == 0) break;
+        // Le nonce ne fait que 32 bits. Quand la plage est epuisee, on
+        // abandonne ce candidat : le tour de boucle suivant en preparera un
+        // autre, avec un horodatage plus recent, donc un espace neuf.
+        if (!found && nonce < threads * _batch) break;
       }
     }
 
     mining = false;
     hashrate = 0;
+    if (_serviceActif) {
+      await ForegroundService.stop();
+      _serviceActif = false;
+    }
     notifyListeners();
   }
 
