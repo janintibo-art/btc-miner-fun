@@ -6,9 +6,10 @@ import '../core/bitcoin_utils.dart';
 import '../core/coin_stats.dart';
 import '../core/coins.dart';
 import '../core/mining_algorithm.dart';
+import '../core/my_chain.dart';
+import '../state/chain_controller.dart';
 import '../state/miner_controller.dart';
 import '../widgets/app_card.dart';
-import '../state/chain_controller.dart';
 import '../widgets/ranking_card.dart';
 import 'my_chain_screen.dart';
 
@@ -28,12 +29,29 @@ class _CoinsScreenState extends State<CoinsScreen> {
   @override
   Widget build(BuildContext context) {
     final m = context.watch<MinerController>();
-    final coins = kCoins.where((coin) {
-      if (_filter == 1) return coin.isMinableHere;
-      if (_filter == 2) return !coin.isMinableHere;
-      if (_filter == 3) return coin.obscure;
-      return true;
-    }).toList();
+    final c = context.watch<ChainController>();
+
+    // La chaine personnelle prend sa place parmi les autres, avec ses vrais
+    // chiffres : ceux de l'appareil, pas d'un explorateur.
+    final chaine = c.chain;
+    final mienne = chaine == null || chaine.blocks.isEmpty
+        ? null
+        : personalCoin(
+            name: chaine.rules.name,
+            symbol: chaine.rules.symbol,
+            blockMinutes: chaine.rules.targetSeconds / 60,
+            reward: chaine.rules.rewardAt(chaine.height),
+          );
+
+    final coins = <Coin>[
+      if (mienne != null && _filter != 2 && _filter != 3) mienne,
+      ...kCoins.where((coin) {
+        if (_filter == 1) return coin.isMinableHere;
+        if (_filter == 2) return !coin.isMinableHere;
+        if (_filter == 3) return coin.obscure;
+        return true;
+      }),
+    ];
 
     // La reference de comparaison : la chaine la plus difficile du catalogue.
     var maxDifficulty = 0.0;
@@ -44,8 +62,6 @@ class _CoinsScreenState extends State<CoinsScreen> {
     return ListView(
       padding: const EdgeInsets.fromLTRB(16, 8, 16, 32),
       children: [
-        _MyCoinEntry(),
-        const SizedBox(height: 20),
         const RankingCard(),
         const SizedBox(height: 20),
         _DifficultyPrimer(m: m),
@@ -92,7 +108,17 @@ class _CoinsScreenState extends State<CoinsScreen> {
         const SizedBox(height: 14),
         ...coins.map((coin) => _CoinTile(
               coin: coin,
-              stats: m.coinStats[coin.symbol],
+              stats: coin.personal && chaine != null
+                  ? CoinStats(
+                      symbol: coin.symbol,
+                      difficulty: difficultyFromBits(
+                          chaine.tip!.bits, chaine.rules.genesisBits),
+                      hashrate: c.hashrate,
+                      blocks: chaine.height,
+                      priceUsd: 0,
+                      fetchedAt: DateTime.now(),
+                    )
+                  : m.coinStats[coin.symbol],
               maxDifficulty: maxDifficulty,
               minerHashrate: m.referenceHashrate,
               expanded: _expanded == coin.symbol,
@@ -154,7 +180,9 @@ class _CoinTile extends StatelessWidget {
   final bool expanded;
   final VoidCallback onTap;
 
-  Color get _supportColor => switch (coin.support) {
+  Color get _supportColor => coin.personal
+      ? AppColors.violet
+      : switch (coin.support) {
         MiningSupport.supported => AppColors.mint,
         MiningSupport.wrongAlgorithm => AppColors.violet,
         MiningSupport.notMinable => AppColors.dim,
@@ -203,6 +231,16 @@ class _CoinTile extends StatelessWidget {
                             style: const TextStyle(
                                 fontSize: 14, fontWeight: FontWeight.w700)),
                       ),
+                      if (coin.personal)
+                        Padding(
+                          padding: const EdgeInsets.only(right: 7),
+                          child: Text('LA TIENNE',
+                              style: mono(
+                                  size: 9,
+                                  weight: FontWeight.w800,
+                                  color: AppColors.violet,
+                                  spacing: 1)),
+                        ),
                       if (coin.obscure)
                         Padding(
                           padding: const EdgeInsets.only(right: 7),
@@ -351,7 +389,30 @@ class _CoinTile extends StatelessWidget {
                   ],
                 ),
               ),
-              if (coin.isMinableHere && coin.pool != null) ...[
+              if (coin.personal) ...[
+                const SizedBox(height: 12),
+                Builder(builder: (context) {
+                  final c = context.watch<ChainController>();
+                  return SizedBox(
+                    width: double.infinity,
+                    child: OutlinedButton.icon(
+                      onPressed: () => Navigator.of(context).push(
+                        MaterialPageRoute<void>(
+                            builder: (_) => const MyChainScreen()),
+                      ),
+                      style: OutlinedButton.styleFrom(
+                        foregroundColor: AppColors.violet,
+                        side: const BorderSide(color: AppColors.line),
+                        padding: const EdgeInsets.symmetric(vertical: 12),
+                      ),
+                      icon: const Icon(Icons.auto_awesome_rounded, size: 17),
+                      label: Text(c.mining
+                          ? 'Minage en cours - ouvrir'
+                          : 'Ouvrir ma chaine'),
+                    ),
+                  );
+                }),
+              ] else if (coin.isMinableHere && coin.pool != null) ...[
                 const SizedBox(height: 12),
                 Builder(builder: (context) {
                   final m = context.watch<MinerController>();
@@ -438,61 +499,6 @@ class _Fact extends StatelessWidget {
                 )),
           ),
         ],
-      ),
-    );
-  }
-}
-
-
-/// Porte d'entree vers la chaine personnelle.
-class _MyCoinEntry extends StatelessWidget {
-  @override
-  Widget build(BuildContext context) {
-    final c = context.watch<ChainController>();
-    final exists = c.exists;
-
-    return AppCard(
-      accent: AppColors.violet.withOpacity(.4),
-      child: InkWell(
-        onTap: () => Navigator.of(context).push(
-          MaterialPageRoute<void>(builder: (_) => const MyChainScreen()),
-        ),
-        child: Row(
-          children: [
-            Container(
-              width: 42,
-              height: 42,
-              decoration: BoxDecoration(
-                color: AppColors.violet.withOpacity(.14),
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: AppColors.violet.withOpacity(.45)),
-              ),
-              child: const Icon(Icons.auto_awesome_rounded,
-                  size: 20, color: AppColors.violet),
-            ),
-            const SizedBox(width: 14),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(exists ? c.chain!.rules.name : 'Creer ma monnaie',
-                      style: const TextStyle(
-                          fontSize: 14.5, fontWeight: FontWeight.w800)),
-                  const SizedBox(height: 4),
-                  Text(
-                    exists
-                        ? '${c.chain!.height} bloc(s) mine(s) - '
-                            '${c.chain!.balance.toStringAsFixed(0)} '
-                            '${c.chain!.rules.symbol}'
-                        : 'Une vraie chaine, de vrais blocs, une valeur de zero',
-                    style: mono(size: 11, color: AppColors.muted),
-                  ),
-                ],
-              ),
-            ),
-            const Icon(Icons.chevron_right_rounded, color: AppColors.muted),
-          ],
-        ),
       ),
     );
   }

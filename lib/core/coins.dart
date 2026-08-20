@@ -107,6 +107,7 @@ class Coin {
     this.mergeMined = false,
     this.poolNote,
     this.obscure = false,
+    this.personal = false,
   });
 
   final String symbol;
@@ -140,6 +141,9 @@ class Coin {
   /// Chaine confidentielle : peu de puissance, donc difficulte tres basse,
   /// mais aussi peu de pools, peu de liquidite et un avenir incertain.
   final bool obscure;
+
+  /// La chaine personnelle de l'utilisateur, fabriquee dans l'application.
+  final bool personal;
 
   bool get isMinableHere => support == MiningSupport.supported;
 }
@@ -565,6 +569,32 @@ const List<Coin> kCoins = <Coin>[
         'calculer : c\'est ce qui a peuple les autres chaines de cette liste.',
   ),
 ];
+
+/// Fabrique la fiche de catalogue de la chaine personnelle.
+///
+/// Elle ne figure pas dans la liste figee : ses caracteristiques viennent des
+/// regles choisies a la creation, donc de l'appareil. Une monnaie que l'on a
+/// faite soi-meme n'a pas de fiche universelle.
+Coin personalCoin({
+  required String name,
+  required String symbol,
+  required double blockMinutes,
+  required double reward,
+}) {
+  return Coin(
+    symbol: symbol,
+    name: name,
+    algorithm: PowAlgorithm.sha256d,
+    support: MiningSupport.supported,
+    blockMinutes: blockMinutes,
+    blockReward: reward,
+    personal: true,
+    summary: 'Ta chaine. Meme algorithme et meme format d\'en-tete que '
+        'Bitcoin, mais sans reseau : personne d\'autre ne valide ces blocs, '
+        'personne ne les echange. Sa valeur est nulle par construction, et '
+        'c\'est precisement ce qu\'elle enseigne.',
+  );
+}
 
 /// Les chaines que le moteur actuel sait miner.
 List<Coin> get kMinableCoins =>
