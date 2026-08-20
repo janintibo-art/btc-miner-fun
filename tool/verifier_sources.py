@@ -42,6 +42,10 @@ SYMBOLES = {
     "scrypt": "Scrypt",
     "coin_stats": "CoinStats",
     "coins": "Coin",
+    "mining_ranking": "RankedCoin",
+    "block_feed": "BlockFeed",
+    "ranking_card": "RankingCard",
+    "block_feed_card": "BlockFeedCard",
     "hardware_card": "HardwareCard",
 }
 
@@ -85,7 +89,10 @@ for fichier in sorted(RACINE.rglob("*.dart")):
         nom_module = cible.split("/")[-1]
         symbole = SYMBOLES.get(nom_module)
         if symbole:
-            variantes = {symbole, symbole[0].lower() + symbole[1:]}
+            # Un module peut etre importe pour son type comme pour sa
+            # fonction : on accepte les deux graphies.
+            variantes = {symbole, symbole[0].lower() + symbole[1:],
+                         symbole[0].upper() + symbole[1:]}
         if symbole and not any(v in corps for v in variantes):
             problemes.append(
                 "{0} : import de {1}.dart inutilise ({2} absent)".format(

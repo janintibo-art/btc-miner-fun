@@ -37,6 +37,17 @@ enum PowAlgorithm {
   eaglesong('Eaglesong',
       'Algorithme simple, choisi pour que les machines dediees arrivent vite '
           'et que la puissance se stabilise.'),
+  groestl('Groestl',
+      'Fonction issue du concours qui a designe SHA-3. Rapide sur processeur, '
+          'ce qui a longtemps garde cette chaine accessible.'),
+  verthash('Verthash',
+      'Exige un fichier de plusieurs gigaoctets genere depuis la chaine '
+          'elle-meme. Concu pour rester hors de portee des machines dediees.'),
+  firopow('FiroPoW',
+      'Variante d\'Ethash ajustee pour les cartes graphiques grand public.'),
+  blake2b('Blake2b',
+      'Fonction de hachage tres rapide. Sa simplicite a fait arriver les '
+          'machines dediees tres vite.'),
   none('Aucun',
       'La chaine ne repose plus sur la preuve de travail : il n\'y a plus rien '
           'a miner, la securite vient des jetons immobilises.');
@@ -94,6 +105,8 @@ class Coin {
     this.poolPort,
     this.addressRules,
     this.mergeMined = false,
+    this.poolNote,
+    this.obscure = false,
   });
 
   final String symbol;
@@ -119,6 +132,14 @@ class Coin {
   /// Vrai si la chaine se mine en meme temps qu'une autre, sans travail
   /// supplementaire.
   final bool mergeMined;
+
+  /// Precision sur le pool : ces adresses changent au fil du temps, et une
+  /// petite chaine peut n'avoir qu'un ou deux pools actifs.
+  final String? poolNote;
+
+  /// Chaine confidentielle : peu de puissance, donc difficulte tres basse,
+  /// mais aussi peu de pools, peu de liquidite et un avenir incertain.
+  final bool obscure;
 
   bool get isMinableHere => support == MiningSupport.supported;
 }
@@ -221,6 +242,193 @@ const List<Coin> kCoins = <Coin>[
     addressRules: AddressRules(base58Versions: [0x37, 0x75]),
     summary: 'Melange preuve de travail et preuve d\'enjeu depuis 2012. La '
         'part minable diminue au fil du temps.',
+  ),
+  Coin(
+    symbol: 'MYR',
+    name: 'Myriad',
+    algorithm: PowAlgorithm.sha256d,
+    support: MiningSupport.supported,
+    blockMinutes: 1,
+    blockReward: 250,
+    obscure: true,
+    addressRules: AddressRules(base58Versions: [0x32, 0x09]),
+    poolNote: 'Chaine confidentielle : verifie qu\'un pool SHA-256d est encore '
+        'actif avant de lancer une session.',
+    summary: 'Premiere chaine a avoir utilise cinq algorithmes en parallele, '
+        'des 2014, chacun avec sa difficulte propre. Un mineur SHA-256d n\'y '
+        'affronte que les autres mineurs SHA-256d, soit tres peu de monde.',
+  ),
+  Coin(
+    symbol: 'ELA',
+    name: 'Elastos',
+    algorithm: PowAlgorithm.sha256d,
+    support: MiningSupport.supported,
+    blockMinutes: 2,
+    blockReward: 1.6,
+    mergeMined: true,
+    obscure: true,
+    addressRules: AddressRules(base58Versions: [0x21, 0x12]),
+    summary: 'Se mine conjointement avec Bitcoin depuis 2018 : une part '
+        'notable de la puissance de Bitcoin la securise sans effort '
+        'supplementaire.',
+  ),
+  Coin(
+    symbol: 'SYS',
+    name: 'Syscoin',
+    algorithm: PowAlgorithm.sha256d,
+    support: MiningSupport.supported,
+    blockMinutes: 1,
+    blockReward: 42.1,
+    mergeMined: true,
+    obscure: true,
+    addressRules: AddressRules(bech32Hrp: 'sys', base58Versions: [0x3F, 0x05]),
+    summary: 'Egalement minee conjointement avec Bitcoin. Le meme hachage peut '
+        'servir a Bitcoin, Namecoin, Elastos et Syscoin a la fois.',
+  ),
+  Coin(
+    symbol: 'TRC',
+    name: 'Terracoin',
+    algorithm: PowAlgorithm.sha256d,
+    support: MiningSupport.supported,
+    blockMinutes: 2,
+    blockReward: 20,
+    obscure: true,
+    addressRules: AddressRules(base58Versions: [0x00, 0x05]),
+    summary: 'Lancee en 2012, une des plus anciennes chaines encore en vie. '
+        'Tres peu de puissance, donc une difficulte parmi les plus basses de '
+        'ce catalogue.',
+  ),
+  Coin(
+    symbol: 'PEPE',
+    name: 'Pepecoin',
+    algorithm: PowAlgorithm.scrypt,
+    support: MiningSupport.supported,
+    blockMinutes: 1,
+    blockReward: 500,
+    mergeMined: true,
+    obscure: true,
+    addressRules: AddressRules(base58Versions: [0x38, 0x16]),
+    summary: 'Chaine Scrypt de 2016, relancee depuis. Elle accepte le travail '
+        'realise pour Dogecoin : mineurs Scrypt, le calcul compte double.',
+  ),
+  Coin(
+    symbol: 'LKY',
+    name: 'Luckycoin',
+    algorithm: PowAlgorithm.scrypt,
+    support: MiningSupport.supported,
+    blockMinutes: 1,
+    blockReward: 20,
+    obscure: true,
+    addressRules: AddressRules(base58Versions: [0x2F, 0x05]),
+    summary: 'L\'ancetre direct de Dogecoin, dont elle a inspire le code en '
+        '2013. Recompenses aleatoires : certains blocs rapportent bien plus '
+        'que les autres.',
+  ),
+  Coin(
+    symbol: 'BEL',
+    name: 'Bellscoin',
+    algorithm: PowAlgorithm.scrypt,
+    support: MiningSupport.supported,
+    blockMinutes: 1,
+    blockReward: 50,
+    obscure: true,
+    addressRules: AddressRules(base58Versions: [0x19, 0x05]),
+    summary: 'Nee en 2013, abandonnee, puis ressuscitee dix ans plus tard par '
+        'sa communaute. Difficulte tres basse.',
+  ),
+  Coin(
+    symbol: 'JKC',
+    name: 'Junkcoin',
+    algorithm: PowAlgorithm.scrypt,
+    support: MiningSupport.supported,
+    blockMinutes: 1,
+    blockReward: 25,
+    obscure: true,
+    addressRules: AddressRules(base58Versions: [0x10, 0x05]),
+    summary: 'Autre rescapee de 2013, remise en service recemment. Le genre de '
+        'chaine ou un ordinateur ordinaire peut encore trouver un bloc.',
+  ),
+  Coin(
+    symbol: 'DINGO',
+    name: 'Dingocoin',
+    algorithm: PowAlgorithm.scrypt,
+    support: MiningSupport.supported,
+    blockMinutes: 1,
+    blockReward: 500000,
+    obscure: true,
+    addressRules: AddressRules(base58Versions: [0x1E, 0x1E]),
+    summary: 'Derivee de Dogecoin, australienne. Puissance modeste, donc une '
+        'difficulte accessible.',
+  ),
+  Coin(
+    symbol: 'NVC',
+    name: 'Novacoin',
+    algorithm: PowAlgorithm.scrypt,
+    support: MiningSupport.supported,
+    blockMinutes: 10,
+    blockReward: 2,
+    obscure: true,
+    addressRules: AddressRules(base58Versions: [0x08, 0x14]),
+    summary: 'Melange preuve de travail et preuve d\'enjeu depuis 2013. La '
+        'part minable se reduit a mesure que la chaine vieillit.',
+  ),
+  Coin(
+    symbol: 'GRS',
+    name: 'Groestlcoin',
+    algorithm: PowAlgorithm.groestl,
+    support: MiningSupport.wrongAlgorithm,
+    blockMinutes: 1,
+    blockReward: 5,
+    obscure: true,
+    summary: 'Chaine de 2014, techniquement en avance sur son temps : elle a '
+        'adopte SegWit avant Bitcoin. Algorithme Groestl, hors de portee du '
+        'moteur actuel.',
+  ),
+  Coin(
+    symbol: 'VTC',
+    name: 'Vertcoin',
+    algorithm: PowAlgorithm.verthash,
+    support: MiningSupport.wrongAlgorithm,
+    blockMinutes: 2.5,
+    blockReward: 12.5,
+    obscure: true,
+    summary: 'Change d\'algorithme des qu\'une machine dediee apparait. Elle '
+        'l\'a fait trois fois. Un cas d\'ecole de la course entre mineurs et '
+        'concepteurs.',
+  ),
+  Coin(
+    symbol: 'FIRO',
+    name: 'Firo',
+    algorithm: PowAlgorithm.firopow,
+    support: MiningSupport.wrongAlgorithm,
+    blockMinutes: 5,
+    blockReward: 1.0625,
+    obscure: true,
+    summary: 'Chaine confidentielle au sens propre : elle efface le lien entre '
+        'les pieces et leur historique. Algorithme reserve aux cartes '
+        'graphiques.',
+  ),
+  Coin(
+    symbol: 'SC',
+    name: 'Siacoin',
+    algorithm: PowAlgorithm.blake2b,
+    support: MiningSupport.wrongAlgorithm,
+    blockMinutes: 10,
+    blockReward: 30000,
+    obscure: true,
+    summary: 'Reseau de stockage decentralise. Le minage y securise un marche '
+        'd\'espace disque plutot qu\'une simple monnaie.',
+  ),
+  Coin(
+    symbol: 'HNS',
+    name: 'Handshake',
+    algorithm: PowAlgorithm.blake2b,
+    support: MiningSupport.wrongAlgorithm,
+    blockMinutes: 10,
+    blockReward: 2000,
+    obscure: true,
+    summary: 'Ne cherche pas a etre une monnaie mais un annuaire de noms de '
+        'domaine sans autorite centrale.',
   ),
   Coin(
     symbol: 'LTC',

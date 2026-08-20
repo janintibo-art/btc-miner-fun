@@ -9,7 +9,9 @@ import '../core/address_validator.dart';
 import '../core/bitcoin_utils.dart';
 import '../core/coin_stats.dart';
 import '../core/coinbase_decoder.dart';
+import '../core/block_feed.dart';
 import '../core/coins.dart';
+import '../core/mining_ranking.dart';
 import '../core/benchmark.dart';
 import '../core/foreground_service.dart';
 import '../core/hash_mode.dart';
@@ -109,6 +111,8 @@ class MinerController extends ChangeNotifier {
   bool priceLoading = false;
   final Map<String, CoinStats> coinStats = <String, CoinStats>{};
   bool coinStatsLoading = false;
+  final List<MinedBlock> recentBlocks = <MinedBlock>[];
+  bool blocksLoading = false;
   String activeCoinSymbol = 'BTC';
   WalletBalance? balance;
   bool balanceLoading = false;
@@ -811,6 +815,27 @@ class MinerController extends ChangeNotifier {
       if (session.averageHashrate > best) best = session.averageHashrate;
     }
     return best;
+  }
+
+  /// Le classement des chaines par esperance de gain, a la puissance mesuree.
+  List<RankedCoin> get ranking =>
+      rankCoins(hashrate: referenceHashrate, allStats: coinStats);
+
+  /// Les derniers blocs trouves dans le monde.
+  Future<void> refreshBlocks() async {
+    if (blocksLoading) return;
+    blocksLoading = true;
+    notifyListeners();
+    try {
+      final blocks = await BlockFeed.fetchRecent();
+      recentBlocks
+        ..clear()
+        ..addAll(blocks);
+    } catch (e) {
+      log('Fil des blocs indisponible : $e');
+    }
+    blocksLoading = false;
+    notifyListeners();
   }
 
   /// Statistiques de toutes les chaines couvertes par l'explorateur.

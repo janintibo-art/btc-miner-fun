@@ -327,6 +327,39 @@ const _chapters = <_ChapterData>[
     Icons.functions_rounded,
   ),
   _ChapterData(
+    'Les petites chaines, et ou miner vraiment',
+    'Le catalogue compte desormais une trentaine de chaines, dont une '
+        'quinzaine de confidentielles. Certaines datent de 2013 et ont ete '
+        'ressuscitees par leur communaute dix ans plus tard.\n\n'
+        'Leur interet est reel : tres peu de puissance s\'y consacre, donc la '
+        'difficulte y est mille a un million de fois plus basse que sur '
+        'Bitcoin. C\'est la que tu verras enfin des parts acceptees, voire un '
+        'bloc entier. Leur limite l\'est tout autant : peu de pools, peu '
+        'd\'echanges possibles, et un avenir incertain.\n\n'
+        'Le classement en tete de l\'onglet Monnaies tranche la question '
+        'autrement. Il calcule, pour chaque chaine et a ta puissance reelle, '
+        'l\'esperance de gain quotidien : difficulte, rythme des blocs, '
+        'recompense et cours reunis dans un seul chiffre.\n\n'
+        'Le resultat surprend souvent. Une difficulte basse ne suffit pas : si '
+        'la recompense ne vaut rien, mille blocs faciles ne pesent pas un bloc '
+        'difficile. C\'est exactement le calcul que font les fermes de minage '
+        'professionnelles, en permanence.',
+    Icons.leaderboard_rounded,
+  ),
+  _ChapterData(
+    'Le fil des blocs',
+    'Dans le labo, le fil affiche les derniers blocs trouves sur Bitcoin, avec '
+        'le nom du pool qui les a trouves et le message laisse dans leur '
+        'coinbase.\n\n'
+        'C\'est le meme decodeur que celui de ton propre travail, applique aux '
+        'blocs des autres. Chacun de ces blocs a ete trouve il y a quelques '
+        'minutes par une machine reelle, quelque part - le plus souvent une '
+        'ferme, parfois un particulier chanceux.\n\n'
+        'Regarde les noms defiler : ils donnent une idee tres concrete de qui '
+        'detient la puissance sur le reseau.',
+    Icons.rss_feed_rounded,
+  ),
+  _ChapterData(
     'Compiler l\'APK et le .exe',
     'Le projet est compile par GitHub Actions, pas par ton telephone. A chaque '
         'envoi de code sur la branche main, GitHub construit :\n\n'

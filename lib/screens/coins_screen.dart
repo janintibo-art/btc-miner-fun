@@ -8,6 +8,7 @@ import '../core/coins.dart';
 import '../core/mining_algorithm.dart';
 import '../state/miner_controller.dart';
 import '../widgets/app_card.dart';
+import '../widgets/ranking_card.dart';
 
 /// Le catalogue des monnaies : algorithme, difficulte reelle, et ce que cette
 /// application peut ou ne peut pas en faire.
@@ -28,6 +29,7 @@ class _CoinsScreenState extends State<CoinsScreen> {
     final coins = kCoins.where((coin) {
       if (_filter == 1) return coin.isMinableHere;
       if (_filter == 2) return !coin.isMinableHere;
+      if (_filter == 3) return coin.obscure;
       return true;
     }).toList();
 
@@ -40,6 +42,8 @@ class _CoinsScreenState extends State<CoinsScreen> {
     return ListView(
       padding: const EdgeInsets.fromLTRB(16, 8, 16, 32),
       children: [
+        const RankingCard(),
+        const SizedBox(height: 20),
         _DifficultyPrimer(m: m),
         const SizedBox(height: 20),
         Row(
@@ -64,7 +68,7 @@ class _CoinsScreenState extends State<CoinsScreen> {
         Wrap(
           spacing: 8,
           children: [
-            for (var i = 0; i < 3; i++)
+            for (var i = 0; i < 4; i++)
               ChoiceChip(
                 selected: _filter == i,
                 onSelected: (_) => setState(() => _filter = i),
@@ -76,7 +80,8 @@ class _CoinsScreenState extends State<CoinsScreen> {
                   fontWeight: FontWeight.w700,
                   color: _filter == i ? Colors.black : AppColors.muted,
                 ),
-                label: Text(['Toutes', 'Minables ici', 'Autres'][i]),
+                label: Text(
+                    ['Toutes', 'Minables ici', 'Autres', 'Confidentielles'][i]),
               ),
           ],
         ),
@@ -194,6 +199,12 @@ class _CoinTile extends StatelessWidget {
                             style: const TextStyle(
                                 fontSize: 14, fontWeight: FontWeight.w700)),
                       ),
+                      if (coin.obscure)
+                        Padding(
+                          padding: const EdgeInsets.only(right: 7),
+                          child: Icon(Icons.visibility_off_outlined,
+                              size: 13, color: AppColors.dim),
+                        ),
                       Text(coin.algorithm.label,
                           style: mono(size: 10.5, color: AppColors.muted)),
                       const SizedBox(width: 8),
@@ -311,6 +322,22 @@ class _CoinTile extends StatelessWidget {
                         'realise pour Bitcoin. Le meme hachage compte deux fois.',
                         style: mono(size: 10.5, color: AppColors.cyan),
                       ),
+                    ],
+                    if (coin.obscure) ...[
+                      const SizedBox(height: 8),
+                      Text(
+                        'Chaine confidentielle : difficulte tres basse, donc '
+                        'des blocs a portee. Mais aussi peu de pools, peu '
+                        'd\'echanges possibles, et un avenir incertain. '
+                        'L\'interet est d\'y voir enfin des parts acceptees, '
+                        'pas d\'y placer des espoirs.',
+                        style: mono(size: 10.5, color: AppColors.dim),
+                      ),
+                    ],
+                    if (coin.poolNote != null) ...[
+                      const SizedBox(height: 8),
+                      Text(coin.poolNote!,
+                          style: mono(size: 10.5, color: AppColors.amber)),
                     ],
                     if (coin.addressRules?.note != null) ...[
                       const SizedBox(height: 8),

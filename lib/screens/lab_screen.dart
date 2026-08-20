@@ -8,6 +8,7 @@ import '../core/lottery_sim.dart';
 import '../core/bitcoin_utils.dart';
 import '../state/miner_controller.dart';
 import '../widgets/app_card.dart';
+import '../widgets/block_feed_card.dart';
 import '../widgets/hardware_card.dart';
 
 /// L'onglet Labo : tout ce qui se passe reellement, rendu observable.
@@ -52,6 +53,9 @@ class _LabScreenState extends State<LabScreen> {
           filter: _consoleFilter,
           onFilter: (f) => setState(() => _consoleFilter = f),
         ),
+        const SizedBox(height: 20),
+        const SectionLabel('Le reseau, en direct'),
+        const BlockFeedCard(),
         const SizedBox(height: 20),
         const SectionLabel('Ce que ta machine sait faire'),
         const HardwareCard(),
