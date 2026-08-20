@@ -13,6 +13,7 @@ import 'screens/history_screen.dart';
 import 'screens/lab_screen.dart';
 import 'screens/screensaver_screen.dart';
 import 'screens/tutorial_screen.dart';
+import 'state/chain_controller.dart';
 import 'state/miner_controller.dart';
 import 'widgets/futuristic_background.dart';
 
@@ -32,8 +33,13 @@ class BtcMinerApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return ChangeNotifierProvider(
-      create: (_) => MinerController()..init(),
+    return MultiProvider(
+      providers: [
+        ChangeNotifierProvider(create: (_) => MinerController()..init()),
+        // La chaine personnelle vit a part : elle ne partage rien avec le
+        // minage reel, et surtout pas ses parts.
+        ChangeNotifierProvider(create: (_) => ChainController()..load()),
+      ],
       child: MaterialApp(
         title: 'BTC Miner Fun',
         debugShowCheckedModeBanner: false,

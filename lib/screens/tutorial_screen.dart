@@ -380,6 +380,30 @@ const _chapters = <_ChapterData>[
     Icons.thermostat_rounded,
   ),
   _ChapterData(
+    'Creer ta propre monnaie',
+    'Dans l\'onglet Monnaies, tu peux fabriquer ta chaine. Elle est reelle sur '
+        'tous les plans techniques : en-tetes de 80 octets au format exact de '
+        'Bitcoin, preuve de travail en double SHA-256, difficulte encodee au '
+        'format compact et reajustee tous les dix blocs pour viser un bloc '
+        'toutes les trente secondes, recompense divisee par deux a intervalle '
+        'regulier, chainage verifiable bloc par bloc.\n\n'
+        'Tu choisis son nom, son symbole, le message grave dans le bloc de '
+        'genese - celui de Bitcoin citait un titre de journal du 3 janvier '
+        '2009 - et sa difficulte de depart.\n\n'
+        'Puis tu mines, et cette fois tu trouves des blocs. Vraiment. Chacun '
+        'affiche son hash, son nonce et le nombre de tentatives qu\'il a '
+        'fallu. Le bouton Verifier relit toute la chaine et refuse tout bloc '
+        'qui n\'apporterait pas la preuve de travail qu\'il annonce.\n\n'
+        'Et ta monnaie vaudra zero. Non par une limitation du programme, mais '
+        'parce que personne d\'autre ne valide tes blocs, ne les echange, ne '
+        'les accepte en paiement. C\'est exactement ce qui manque, et c\'est '
+        'exactement ce qui fait la valeur des autres : pas la technique, mais '
+        'le fait que des milliers d\'inconnus fassent tourner le meme code et '
+        'reconnaissent les memes blocs.\n\n'
+        'Cette lecon-la vaut tous les chapitres precedents.',
+    Icons.auto_awesome_rounded,
+  ),
+  _ChapterData(
     'Compiler l\'APK et le .exe',
     'Le projet est compile par GitHub Actions, pas par ton telephone. A chaque '
         'envoi de code sur la branche main, GitHub construit :\n\n'

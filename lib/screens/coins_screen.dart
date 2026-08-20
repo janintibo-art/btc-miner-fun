@@ -8,7 +8,9 @@ import '../core/coins.dart';
 import '../core/mining_algorithm.dart';
 import '../state/miner_controller.dart';
 import '../widgets/app_card.dart';
+import '../state/chain_controller.dart';
 import '../widgets/ranking_card.dart';
+import 'my_chain_screen.dart';
 
 /// Le catalogue des monnaies : algorithme, difficulte reelle, et ce que cette
 /// application peut ou ne peut pas en faire.
@@ -42,6 +44,8 @@ class _CoinsScreenState extends State<CoinsScreen> {
     return ListView(
       padding: const EdgeInsets.fromLTRB(16, 8, 16, 32),
       children: [
+        _MyCoinEntry(),
+        const SizedBox(height: 20),
         const RankingCard(),
         const SizedBox(height: 20),
         _DifficultyPrimer(m: m),
@@ -434,6 +438,61 @@ class _Fact extends StatelessWidget {
                 )),
           ),
         ],
+      ),
+    );
+  }
+}
+
+
+/// Porte d'entree vers la chaine personnelle.
+class _MyCoinEntry extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    final c = context.watch<ChainController>();
+    final exists = c.exists;
+
+    return AppCard(
+      accent: AppColors.violet.withOpacity(.4),
+      child: InkWell(
+        onTap: () => Navigator.of(context).push(
+          MaterialPageRoute<void>(builder: (_) => const MyChainScreen()),
+        ),
+        child: Row(
+          children: [
+            Container(
+              width: 42,
+              height: 42,
+              decoration: BoxDecoration(
+                color: AppColors.violet.withOpacity(.14),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: AppColors.violet.withOpacity(.45)),
+              ),
+              child: const Icon(Icons.auto_awesome_rounded,
+                  size: 20, color: AppColors.violet),
+            ),
+            const SizedBox(width: 14),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(exists ? c.chain!.rules.name : 'Creer ma monnaie',
+                      style: const TextStyle(
+                          fontSize: 14.5, fontWeight: FontWeight.w800)),
+                  const SizedBox(height: 4),
+                  Text(
+                    exists
+                        ? '${c.chain!.height} bloc(s) mine(s) - '
+                            '${c.chain!.balance.toStringAsFixed(0)} '
+                            '${c.chain!.rules.symbol}'
+                        : 'Une vraie chaine, de vrais blocs, une valeur de zero',
+                    style: mono(size: 11, color: AppColors.muted),
+                  ),
+                ],
+              ),
+            ),
+            const Icon(Icons.chevron_right_rounded, color: AppColors.muted),
+          ],
+        ),
       ),
     );
   }
