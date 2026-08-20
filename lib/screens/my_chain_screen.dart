@@ -1,9 +1,13 @@
+import 'dart:convert';
+
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 
 import '../app_theme.dart';
 import '../core/bitcoin_utils.dart';
 import '../core/my_chain.dart';
+import '../core/session_export.dart';
 import '../state/chain_controller.dart';
 import '../widgets/app_card.dart';
 
@@ -333,6 +337,38 @@ class _MyChainScreenState extends State<MyChainScreen> {
               rules: chain.rules,
             )),
         const SizedBox(height: 16),
+        AppCard(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text('PUBLIER LA CHAINE', style: label()),
+              const SizedBox(height: 8),
+              const Text(
+                'Exporte la chaine au format attendu par la page web. Depose '
+                'le fichier obtenu dans le dossier site du depot, sous le nom '
+                'chain.json : la page se met a jour toute seule a la '
+                'publication.',
+                style: TextStyle(
+                    fontSize: 12, height: 1.5, color: AppColors.muted),
+              ),
+              const SizedBox(height: 12),
+              SizedBox(
+                width: double.infinity,
+                child: OutlinedButton.icon(
+                  onPressed: c.mining ? null : () => _exportChain(c),
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: AppColors.cyan,
+                    side: const BorderSide(color: AppColors.line),
+                    padding: const EdgeInsets.symmetric(vertical: 12),
+                  ),
+                  icon: const Icon(Icons.upload_file_rounded, size: 17),
+                  label: const Text('Exporter chain.json'),
+                ),
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: 16),
         TextButton(
           onPressed: c.mining ? null : () => _confirmDestroy(c),
           child: const Text('Supprimer cette chaine',
@@ -340,6 +376,42 @@ class _MyChainScreenState extends State<MyChainScreen> {
         ),
       ],
     );
+  }
+
+  /// Le fichier attendu par la page web est exactement celui que la chaine
+  /// sait deja produire : aucun format intermediaire a maintenir.
+  Future<void> _exportChain(ChainController c) async {
+    final chain = c.chain;
+    if (chain == null) return;
+
+    // Le hash de chaque bloc est ajoute au passage : la page l'affiche sans
+    // avoir a reimplementer le double SHA-256 en JavaScript.
+    final avecHash = _withHashes(chain);
+
+    final chemin = await SessionExport.writeToDisk(avecHash);
+    if (!mounted) return;
+    if (chemin != null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Fichier ecrit : $chemin')),
+      );
+    } else {
+      await Clipboard.setData(ClipboardData(text: avecHash));
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+            content: Text('chain.json copie : colle-le dans site/chain.json')),
+      );
+    }
+  }
+
+  String _withHashes(MyChain chain) {
+    final blocs = chain.blocks
+        .map((b) => {...b.toJson(), 'hash': b.hash})
+        .toList();
+    return const JsonEncoder.withIndent('  ').convert({
+      'rules': chain.rules.toJson(),
+      'blocks': blocs,
+    });
   }
 
   void _confirmDestroy(ChainController c) {

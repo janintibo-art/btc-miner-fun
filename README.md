@@ -74,6 +74,11 @@ regenere a chaque compilation avec `flutter create`.
 Sur Android, autorise l'installation depuis une source inconnue pour ton
 gestionnaire de fichiers.
 
+## Le site
+
+Le dossier `site/` contient la page publique du Tibo, publiee gratuitement par
+GitHub Pages. Voir `docs/SITE.md` pour l'activer en trois clics.
+
 ## Etat du projet
 
 Version 0.21.0 : simulateur de loterie Monte-Carlo, mode veille plein ecran,

@@ -1,0 +1,257 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Le Tibo — une monnaie faite à la main</title>
+<meta name="description" content="Une chaîne de blocs complète, minée depuis un téléphone. Vraie preuve de travail, valeur zéro, et c'est tout l'intérêt.">
+<link rel="icon" href="assets/favicon.png" type="image/png">
+<style>
+  :root {
+    --nuit: #070a12;
+    --panneau: #0e1422;
+    --panneau-haut: #161e30;
+    --ligne: #23304a;
+    --or: #f7931a;
+    --or-vif: #ffb648;
+    --menthe: #4ade9b;
+    --violet: #a78bfa;
+    --encre: #f2f7ff;
+    --doux: #8492ad;
+    --terne: #53617a;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    background: var(--nuit);
+    color: var(--encre);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    line-height: 1.6;
+    overflow-x: hidden;
+  }
+  .fond {
+    position: fixed; inset: 0; z-index: -1;
+    background:
+      radial-gradient(900px 500px at 50% -10%, rgba(247,147,26,.14), transparent 70%),
+      radial-gradient(700px 400px at 100% 100%, rgba(54,217,255,.07), transparent 70%);
+  }
+  .contenu { max-width: 940px; margin: 0 auto; padding: 0 22px; }
+  header { text-align: center; padding: 68px 0 40px; }
+  header img { width: min(320px, 72vw); filter: drop-shadow(0 0 60px rgba(247,147,26,.45)); }
+  h1 { font-size: clamp(2.1rem, 7vw, 3.4rem); letter-spacing: -.02em; margin: 24px 0 10px; }
+  .sous-titre { color: var(--doux); font-size: 1.05rem; max-width: 560px; margin: 0 auto; }
+  .puces { display: flex; gap: 10px; justify-content: center; flex-wrap: wrap; margin-top: 26px; }
+  .puce {
+    border: 1px solid var(--ligne); border-radius: 999px;
+    padding: 7px 15px; font-size: .82rem; color: var(--doux);
+    background: rgba(255,255,255,.02);
+  }
+  .puce strong { color: var(--or-vif); font-weight: 700; }
+  section { padding: 34px 0; }
+  h2 { font-size: 1.35rem; margin-bottom: 14px; letter-spacing: -.01em; }
+  h2 .num { color: var(--or); font-family: ui-monospace, Menlo, monospace; font-size: .95rem; margin-right: 10px; }
+  p { color: var(--doux); margin-bottom: 14px; }
+  p strong, li strong { color: var(--encre); }
+  .carte {
+    background: var(--panneau); border: 1px solid var(--ligne);
+    border-radius: 18px; padding: 22px; margin-bottom: 14px;
+  }
+  .carte.accent { border-color: rgba(247,147,26,.4); }
+  .grille { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; }
+  .stat { background: var(--panneau-haut); border: 1px solid var(--ligne); border-radius: 14px; padding: 14px; }
+  .stat .titre { font-size: .68rem; letter-spacing: .12em; color: var(--terne); text-transform: uppercase; }
+  .stat .valeur { font-family: ui-monospace, Menlo, monospace; font-size: 1.35rem; font-weight: 700; margin-top: 6px; }
+  table { width: 100%; border-collapse: collapse; font-size: .84rem; }
+  th { text-align: left; font-size: .68rem; letter-spacing: .1em; text-transform: uppercase; color: var(--terne); padding: 8px 6px; border-bottom: 1px solid var(--ligne); }
+  td { padding: 10px 6px; border-bottom: 1px solid rgba(35,48,74,.5); font-family: ui-monospace, Menlo, monospace; font-size: .78rem; color: var(--doux); }
+  td.hauteur { color: var(--or); font-weight: 700; }
+  td.hash { color: var(--menthe); word-break: break-all; }
+  .defilant { overflow-x: auto; }
+  ul { color: var(--doux); padding-left: 20px; margin-bottom: 14px; }
+  li { margin-bottom: 8px; }
+  .bouton {
+    display: inline-block; background: var(--or); color: #000;
+    padding: 13px 22px; border-radius: 14px; text-decoration: none;
+    font-weight: 800; font-size: .92rem; margin: 6px 8px 6px 0;
+  }
+  .bouton.creux { background: transparent; color: var(--or); border: 1px solid var(--ligne); }
+  code { background: var(--panneau-haut); padding: 2px 6px; border-radius: 5px; font-size: .84em; color: var(--or-vif); }
+  footer { text-align: center; padding: 46px 0 60px; color: var(--terne); font-size: .8rem; }
+  .avertissement { border-color: rgba(255,107,107,.45); }
+  .avertissement h2 { color: #ff6b6b; }
+</style>
+</head>
+<body>
+<div class="fond"></div>
+
+<div class="contenu">
+
+  <header>
+    <img src="assets/tibo.png" alt="La pièce du Tibo">
+    <h1>Le Tibo</h1>
+    <p class="sous-titre">
+      Une chaîne de blocs complète, minée à la main depuis un téléphone.
+      Vraie preuve de travail, vrais blocs, valeur zéro — et c'est exactement
+      l'intérêt de la chose.
+    </p>
+    <div class="puces">
+      <span class="puce">Algorithme <strong>SHA-256d</strong></span>
+      <span class="puce">En-tête <strong>80 octets</strong></span>
+      <span class="puce">Difficulté <strong>ajustée</strong></span>
+      <span class="puce">Valeur <strong>0,00 €</strong></span>
+    </div>
+  </header>
+
+  <section>
+    <h2><span class="num">01</span>Ce que c'est</h2>
+    <div class="carte">
+      <p>
+        Le Tibo est une chaîne de blocs écrite depuis zéro, à l'intérieur d'une
+        application de minage faite maison. Rien n'y est simulé : les en-têtes
+        font 80 octets au format exact de Bitcoin, la preuve de travail est un
+        double SHA-256, la difficulté s'encode au format compact et se réajuste
+        toutes les dix blocs, la récompense est divisée par deux à intervalle
+        régulier, et chaque bloc peut être revérifié.
+      </p>
+      <p>
+        <strong>Une seule chose manque : le réseau.</strong> Personne d'autre ne
+        valide ces blocs, personne ne les échange, personne ne les accepte en
+        paiement.
+      </p>
+    </div>
+  </section>
+
+  <section>
+    <h2><span class="num">02</span>La chaîne</h2>
+    <div class="carte" id="etat">
+      <p id="chargement">Chargement de la chaîne…</p>
+      <div class="grille" id="stats" hidden></div>
+    </div>
+    <div class="carte" id="blocs-carte" hidden>
+      <div class="defilant">
+        <table>
+          <thead>
+            <tr><th>#</th><th>Hash</th><th>Nonce</th><th>Tentatives</th><th>Message</th></tr>
+          </thead>
+          <tbody id="blocs"></tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2><span class="num">03</span>Pourquoi zéro</h2>
+    <div class="carte avertissement">
+      <h2 style="font-size:1.05rem;margin-bottom:12px">Une monnaie ne vaut pas par sa technique</h2>
+      <p>
+        Reproduire le mécanisme de Bitcoin demande quelques centaines de lignes
+        de code. C'est fait, c'est ici, et ça fonctionne.
+      </p>
+      <p>
+        Ce qui donne sa valeur à une monnaie, c'est autre chose : des milliers
+        d'inconnus qui font tourner le même code, reconnaissent les mêmes blocs,
+        et acceptent d'échanger contre. Le Tibo n'a rien de tout ça.
+      </p>
+      <p style="margin-bottom:0">
+        <strong>N'achète pas de Tibo. N'en vends pas. Ne l'accepte pas en
+        paiement.</strong> Ce n'est pas un placement, c'est un objet
+        pédagogique — et il ne prétend rien d'autre.
+      </p>
+    </div>
+  </section>
+
+  <section>
+    <h2><span class="num">04</span>L'application</h2>
+    <div class="carte">
+      <p>
+        Le Tibo est né dans une application qui mine aussi, pour de vrai, sur
+        une trentaine de chaînes existantes. Elle tourne sur Android et Windows,
+        et son code est ouvert.
+      </p>
+      <ul>
+        <li>Deux moteurs de calcul : <strong>SHA-256d</strong> et <strong>Scrypt</strong></li>
+        <li>Un laboratoire : décodeur d'en-tête, console du protocole, banc d'avalanche</li>
+        <li>Un catalogue de 34 chaînes avec leur difficulté réelle</li>
+        <li>Un portefeuille local et un suivi de solde en lecture seule</li>
+      </ul>
+      <p>
+        Les versions compilées se trouvent dans l'onglet Actions du dépôt, en
+        bas de la dernière exécution réussie.
+      </p>
+      <a class="bouton" id="lien-depot" href="#">Voir le dépôt</a>
+      <a class="bouton creux" id="lien-actions" href="#">Télécharger l'application</a>
+    </div>
+  </section>
+
+  <footer>
+    Le Tibo — chaîne personnelle, valeur nulle, code ouvert.<br>
+    Page mise à jour à chaque envoi de la chaîne exportée.
+  </footer>
+
+</div>
+
+<script>
+// Les liens du dépôt se déduisent de l'adresse de la page : aucun nom en dur.
+(function () {
+  const hote = location.hostname;
+  const utilisateur = hote.endsWith('.github.io') ? hote.split('.')[0] : null;
+  const depot = location.pathname.split('/').filter(Boolean)[0] || 'btc-miner-fun';
+  if (utilisateur) {
+    const base = `https://github.com/${utilisateur}/${depot}`;
+    document.getElementById('lien-depot').href = base;
+    document.getElementById('lien-actions').href = base + '/actions';
+  } else {
+    document.getElementById('lien-depot').href = 'https://github.com';
+    document.getElementById('lien-actions').href = 'https://github.com';
+  }
+})();
+
+// L'explorateur lit le fichier exporte depuis l'application.
+function nombre(n) {
+  return n.toLocaleString('fr-FR');
+}
+
+function hashDuBloc(bloc) {
+  // Le hash est recalcule cote client a partir de l'en-tete : la page ne fait
+  // pas confiance au fichier, elle verifie.
+  return bloc.hash || '—';
+}
+
+fetch('chain.json?v=' + Date.now())
+  .then(r => { if (!r.ok) throw new Error('absent'); return r.json(); })
+  .then(data => {
+    const regles = data.rules || {};
+    const blocs = data.blocks || [];
+    const solde = blocs.reduce((s, b) => s + (b.r || 0), 0);
+    const tentatives = blocs.reduce((s, b) => s + (b.x || 0), 0);
+
+    document.getElementById('chargement').hidden = true;
+    const stats = document.getElementById('stats');
+    stats.hidden = false;
+    stats.innerHTML = [
+      ['Blocs minés', nombre(blocs.length)],
+      ['En circulation', nombre(solde) + ' ' + (regles.symbol || 'TIBO')],
+      ['Tentatives cumulées', nombre(tentatives)],
+      ['Intervalle visé', (regles.target || 30) + ' s']
+    ].map(([t, v]) =>
+      `<div class="stat"><div class="titre">${t}</div><div class="valeur">${v}</div></div>`
+    ).join('');
+
+    const corps = document.getElementById('blocs');
+    corps.innerHTML = blocs.slice().reverse().slice(0, 50).map(b => `
+      <tr>
+        <td class="hauteur">${b.h}</td>
+        <td class="hash">${hashDuBloc(b)}</td>
+        <td>${nombre(b.n || 0)}</td>
+        <td>${nombre(b.x || 0)}</td>
+        <td>${(b.msg || '').replace(/[<>]/g, '')}</td>
+      </tr>`).join('');
+    document.getElementById('blocs-carte').hidden = blocs.length === 0;
+  })
+  .catch(() => {
+    document.getElementById('chargement').textContent =
+      'Aucune chaîne publiée pour l\'instant. Exporte la tienne depuis ' +
+      'l\'application, puis dépose le fichier chain.json à côté de cette page.';
+  });
+</script>
+</body>
+</html>

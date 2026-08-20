@@ -1,0 +1,13 @@
+{
+  "rules": {
+    "name": "Tibo",
+    "symbol": "TIBO",
+    "target": 30,
+    "retarget": 10,
+    "reward": 50,
+    "halving": 100,
+    "bits": 520159231,
+    "genesis": "Le premier bloc de ma monnaie"
+  },
+  "blocks": []
+}
