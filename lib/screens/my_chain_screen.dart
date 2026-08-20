@@ -315,7 +315,7 @@ class _MyChainScreenState extends State<MyChainScreen> {
                   _Stat('Blocs', '${chain.height}'),
                   _Stat('Difficulte', difficulty.toStringAsFixed(2)),
                   _Stat('Recompense',
-                      '${formatBtc(chain.rules.rewardAt(chain.height))}'),
+                      formatBtc(chain.rules.rewardAt(chain.height))),
                 ],
               ),
             ],

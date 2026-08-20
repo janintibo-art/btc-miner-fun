@@ -106,6 +106,10 @@ class _CoinsScreenState extends State<CoinsScreen> {
           ],
         ),
         const SizedBox(height: 14),
+        if (mienne == null && _filter != 2 && _filter != 3) ...[
+          const _CreerMaMonnaie(),
+          const SizedBox(height: 10),
+        ],
         ...coins.map((coin) => _CoinTile(
               coin: coin,
               stats: coin.personal && chaine != null
@@ -396,7 +400,10 @@ class _CoinTile extends StatelessWidget {
                   return SizedBox(
                     width: double.infinity,
                     child: OutlinedButton.icon(
-                      onPressed: () => Navigator.of(context).pop(),
+                      onPressed: () => Navigator.of(context).push(
+                        MaterialPageRoute<void>(
+                            builder: (_) => const MyChainScreen()),
+                      ),
                       style: OutlinedButton.styleFrom(
                         foregroundColor: AppColors.violet,
                         side: const BorderSide(color: AppColors.line),
@@ -507,6 +514,8 @@ class _Fact extends StatelessWidget {
 /// catalogue - sauf que cette fiche n'apparait qu'une fois la chaine creee.
 /// Sans chaine, il n'y avait donc plus aucun acces a l'ecran de creation.
 class _CreerMaMonnaie extends StatelessWidget {
+  const _CreerMaMonnaie();
+
   @override
   Widget build(BuildContext context) {
     return AppCard(

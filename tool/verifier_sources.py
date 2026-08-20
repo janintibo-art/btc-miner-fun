@@ -91,6 +91,22 @@ for fichier in sorted(RACINE.rglob("*.dart")):
             "{0} : la classe {1} est utilisee mais n'existe pas dans ce fichier"
             .format(fichier, nom))
 
+    # 1 bis. Classes privees definies mais jamais utilisees.
+    #
+    #        Le symetrique du controle precedent, et tout aussi revelateur :
+    #        une classe declaree que personne n'appelle signale presque
+    #        toujours une insertion ratee ou un morceau devenu orphelin.
+    #        `flutter analyze` le refuse, donc la compilation echoue.
+    for nom in sorted(definies - utilisees):
+        # Les etats de widgets sont references par leur type de retour.
+        if re.search(r"State<\w+>\s*=>\s*" + nom, source):
+            continue
+        if re.search(r"=>\s*" + nom + r"\(", source):
+            continue
+        problemes.append(
+            "{0} : la classe {1} est definie mais jamais utilisee"
+            .format(fichier, nom))
+
     # 2. Imports relatifs dont le symbole principal est absent.
     for prefixe, cible in re.findall(r"import '((?:\.\./|\./)+)([^']+)\.dart'", source):
         chemin = (fichier.parent / prefixe / (cible + ".dart")).resolve()

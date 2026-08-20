@@ -127,7 +127,7 @@ class _HashRouletteScreenState extends State<HashRouletteScreen> {
                 children: [
                   _Compteur('Record', '$_record zeros'),
                   _Compteur('Tirages', formatCount(_tirages)),
-                  _Compteur('Un bloc BTC', '19 zeros'),
+                  const _Compteur('Un bloc BTC', '19 zeros'),
                 ],
               ),
               const SizedBox(height: 18),

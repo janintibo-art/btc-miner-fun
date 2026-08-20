@@ -663,9 +663,9 @@ class _ConfigScreenState extends State<ConfigScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                _Shortcut('F5', 'Demarrer ou arreter le minage'),
-                _Shortcut('F11', 'Mode veille plein ecran'),
-                _Shortcut('Ctrl + 1 a 6', 'Changer d\'onglet'),
+                const _Shortcut('F5', 'Demarrer ou arreter le minage'),
+                const _Shortcut('F11', 'Mode veille plein ecran'),
+                const _Shortcut('Ctrl + 1 a 6', 'Changer d\'onglet'),
               ],
             ),
           ),
