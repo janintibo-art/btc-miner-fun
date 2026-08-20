@@ -6,6 +6,7 @@ import 'app_theme.dart';
 import 'core/app_version.dart';
 import 'core/platform_profile.dart';
 import 'screens/config_screen.dart';
+import 'screens/coins_screen.dart';
 import 'screens/converter_screen.dart';
 import 'screens/dashboard_screen.dart';
 import 'screens/history_screen.dart';
@@ -69,7 +70,7 @@ class _RootShellState extends State<RootShell> {
           Navigator.of(context).push(
             MaterialPageRoute<void>(builder: (_) => const ScreensaverScreen()),
           ),
-      for (var i = 0; i < 6; i++)
+      for (var i = 0; i < 7; i++)
         SingleActivator(
           [
             LogicalKeyboardKey.digit1,
@@ -78,6 +79,7 @@ class _RootShellState extends State<RootShell> {
             LogicalKeyboardKey.digit4,
             LogicalKeyboardKey.digit5,
             LogicalKeyboardKey.digit6,
+            LogicalKeyboardKey.digit7,
           ][i],
           control: true,
         ): () => setState(() => _index = i),
@@ -89,6 +91,7 @@ class _RootShellState extends State<RootShell> {
   static const _titles = [
     'Minage',
     'Labo',
+    'Monnaies',
     'Historique',
     'Convertir',
     'Reglages',
@@ -200,6 +203,7 @@ class _RootShellState extends State<RootShell> {
             children: const [
               DashboardScreen(),
               LabScreen(),
+              CoinsScreen(),
               HistoryScreen(),
               ConverterScreen(),
               ConfigScreen(),
@@ -258,6 +262,11 @@ class _ReactorRail extends StatelessWidget {
   static const _items = <({IconData icon, IconData active, String label})>[
     (icon: Icons.bolt_outlined, active: Icons.bolt_rounded, label: 'Minage'),
     (icon: Icons.science_outlined, active: Icons.science_rounded, label: 'Labo'),
+    (
+      icon: Icons.currency_bitcoin_outlined,
+      active: Icons.currency_bitcoin_rounded,
+      label: 'Monnaies'
+    ),
     (icon: Icons.history_outlined, active: Icons.history_rounded, label: 'Sessions'),
     (icon: Icons.euro_outlined, active: Icons.euro_rounded, label: 'Euros'),
     (icon: Icons.tune_outlined, active: Icons.tune_rounded, label: 'Reglages'),
@@ -452,8 +461,10 @@ class _ReactorNavigation extends StatelessWidget {
               destinations: const [
                 NavigationDestination(icon: Icon(Icons.bolt_rounded), label: 'Minage'),
                 NavigationDestination(icon: Icon(Icons.science_rounded), label: 'Labo'),
+                NavigationDestination(
+                    icon: Icon(Icons.currency_bitcoin_rounded), label: 'Monnaies'),
                 NavigationDestination(icon: Icon(Icons.history_rounded), label: 'Sessions'),
-                NavigationDestination(icon: Icon(Icons.currency_bitcoin_rounded), label: 'Euros'),
+                NavigationDestination(icon: Icon(Icons.euro_rounded), label: 'Euros'),
                 NavigationDestination(icon: Icon(Icons.tune_rounded), label: 'Reglages'),
                 NavigationDestination(icon: Icon(Icons.school_rounded), label: 'Guide'),
               ],

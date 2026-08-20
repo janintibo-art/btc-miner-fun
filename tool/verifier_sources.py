@@ -44,7 +44,8 @@ SYMBOLES = {
 STANDARD = {
     "dart:io": ["Platform.", "File(", "Directory(", "HttpClient", "Socket",
                 "HttpHeaders", "HttpException", "SocketOption"],
-    "dart:math": ["math.", "Random(", "Random.", "max(", "min(", "sqrt(", "pow("],
+    "dart:math": ["math.", "Random(", "Random.", "max(", "min(", "sqrt(",
+                  "pow(", "ln10", "ln2", "exp(", " log(", "(log(", "pi"],
     "dart:typed_data": ["Uint8List", "Uint32List", "ByteData"],
     "dart:convert": ["jsonEncode", "jsonDecode", "utf8", "LineSplitter", "base64"],
     "dart:isolate": ["Isolate", "SendPort", "ReceivePort"],
@@ -93,6 +94,58 @@ for fichier in sorted(RACINE.rglob("*.dart")):
             if not any(marqueur in corps for marqueur in marqueurs):
                 problemes.append(
                     "{0} : import de {1} inutilise".format(fichier, bibliotheque))
+
+# 4. Membres du controleur appeles depuis l'interface mais jamais definis.
+#    C'est le meme defaut que les classes manquantes, applique a l'etat
+#    partage : une insertion ratee laisse un appel sans cible.
+controleur = pathlib.Path("lib/state/miner_controller.dart")
+if controleur.exists():
+    source_controleur = controleur.read_text(encoding="utf-8")
+    # N'importe quelle declaration de membre : type quelconque, generiques et
+    # point d'interrogation compris.
+    definis = set(re.findall(
+        r"^\s{2}(?:final\s+|late\s+|static\s+)*[\w<>,\s?(){}:]+?\s+(\w+)\s*[=;]",
+        source_controleur, re.M))
+    definis |= set(re.findall(r"get\s+(\w+)", source_controleur))
+    definis |= set(re.findall(r"(\w+)\s*\(", source_controleur))
+
+    appeles = set()
+    for fichier in sorted(RACINE.rglob("*.dart")):
+        if "miner_controller" in str(fichier):
+            continue
+        texte = fichier.read_text(encoding="utf-8")
+        appeles |= set(re.findall(r"\bm\.(\w+)", texte))
+
+    manquants = sorted(a for a in appeles - definis if not a.startswith("_"))
+    for nom in manquants:
+        problemes.append(
+            "lib/state/miner_controller.dart : membre '{0}' utilise par "
+            "l'interface mais introuvable".format(nom))
+
+# 5. Navigation : ecrans, titres, barre du bas et rail lateral doivent
+#    compter le meme nombre d'entrees.
+principal = pathlib.Path("lib/main.dart")
+if principal.exists():
+    texte = principal.read_text(encoding="utf-8")
+    try:
+        bloc_titres = texte[texte.index("static const _titles"):]
+        bloc_titres = bloc_titres[:bloc_titres.index("];")]
+        titres = len(re.findall(r"'\w+'", bloc_titres))
+
+        bloc_items = texte[texte.index("static const _items"):]
+        bloc_items = bloc_items[:bloc_items.index("@override")]
+        rail = bloc_items.count("label:")
+
+        barre = texte.count("NavigationDestination(")
+        ecrans = len(re.findall(r"\n\s{14}\w+Screen\(\),", texte))
+
+        if not (titres == rail == barre == ecrans):
+            problemes.append(
+                "lib/main.dart : navigation incoherente - {0} titres, {1} "
+                "entrees de rail, {2} entrees de barre, {3} ecrans".format(
+                    titres, rail, barre, ecrans))
+    except ValueError:
+        problemes.append("lib/main.dart : structure de navigation illisible")
 
 if problemes:
     print("Problemes detectes :\n")

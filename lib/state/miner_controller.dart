@@ -7,7 +7,9 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import '../core/address_validator.dart';
 import '../core/bitcoin_utils.dart';
+import '../core/coin_stats.dart';
 import '../core/coinbase_decoder.dart';
+import '../core/coins.dart';
 import '../core/benchmark.dart';
 import '../core/foreground_service.dart';
 import '../core/hash_mode.dart';
@@ -104,6 +106,9 @@ class MinerController extends ChangeNotifier {
   Timer? _autoStopTimer;
   MarketData? market;
   bool priceLoading = false;
+  final Map<String, CoinStats> coinStats = <String, CoinStats>{};
+  bool coinStatsLoading = false;
+  String activeCoinSymbol = 'BTC';
   WalletBalance? balance;
   bool balanceLoading = false;
   String? balanceError;
@@ -177,6 +182,7 @@ class MinerController extends ChangeNotifier {
     nonceStrategy = NonceStrategyInfo.fromName(p.getString('nonceStrategy'));
     signaturePhrase = p.getString('signaturePhrase') ?? '';
     market = MarketData.tryDecode(p.getString('market'));
+    activeCoinSymbol = p.getString('coin') ?? 'BTC';
     final cached = WalletBalance.tryDecode(p.getString('balance'));
     if (cached != null && cached.address == wallet.trim()) balance = cached;
     sessions.addAll(MiningSession.decodeList(p.getString('sessions') ?? '[]'));
@@ -239,6 +245,7 @@ class MinerController extends ChangeNotifier {
     await p.setInt('autoStopMinutes', autoStopMinutes);
     await p.setBool('keepScreenOn', keepScreenOn);
     await p.setString('hashMode', hashMode.name);
+    await p.setString('coin', activeCoinSymbol);
     await p.setInt('observeBits', observeBits);
     await p.setString('nonceStrategy', nonceStrategy.name);
     await p.setString('signaturePhrase', signaturePhrase);
@@ -781,6 +788,51 @@ class MinerController extends ChangeNotifier {
     }
     priceLoading = false;
     notifyListeners();
+  }
+
+  /// La chaine actuellement configuree.
+  Coin get activeCoin => coinBySymbol(activeCoinSymbol) ?? kCoins.first;
+
+  /// Puissance de reference pour les estimations : celle mesuree maintenant,
+  /// sinon la meilleure moyenne des sessions passees.
+  double get referenceHashrate {
+    if (hashrate > 0) return hashrate;
+    var best = 0.0;
+    for (final session in sessions) {
+      if (session.averageHashrate > best) best = session.averageHashrate;
+    }
+    return best;
+  }
+
+  /// Statistiques de toutes les chaines couvertes par l'explorateur.
+  Future<void> refreshCoinStats() async {
+    if (coinStatsLoading) return;
+    coinStatsLoading = true;
+    notifyListeners();
+    try {
+      final results = await CoinStatsService.fetchAll(kCoins);
+      coinStats
+        ..clear()
+        ..addAll(results);
+      log('Statistiques recuperees pour ${results.length} chaines.');
+    } catch (e) {
+      log('Statistiques des chaines indisponibles : $e');
+    }
+    coinStatsLoading = false;
+    notifyListeners();
+  }
+
+  /// Bascule vers une autre chaine en SHA-256d. Le moteur ne change pas :
+  /// seuls le pool et les regles d'adresse different.
+  Future<void> setActiveCoin(Coin coin) async {
+    if (!coin.isMinableHere) return;
+    activeCoinSymbol = coin.symbol;
+    if (coin.pool != null && coin.poolPort != null) {
+      poolHost = coin.pool!;
+      poolPort = coin.poolPort!;
+    }
+    log('Chaine active : ${coin.name} (${coin.symbol}).');
+    await saveSettings();
   }
 
   /// Consulte le solde d'une adresse via l'explorateur public. Cette methode

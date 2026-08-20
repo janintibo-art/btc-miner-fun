@@ -284,6 +284,27 @@ const _chapters = <_ChapterData>[
     Icons.casino_rounded,
   ),
   _ChapterData(
+    'Les autres monnaies',
+    'L\'onglet Monnaies liste une vingtaine de chaines avec leur algorithme, '
+        'leur difficulte reelle et ce que cette application peut en faire.\n\n'
+        'Sept d\'entre elles utilisent le meme SHA-256d que Bitcoin : le moteur '
+        'fonctionne tel quel, il suffit de viser un pool de cette chaine. Les '
+        'autres demanderaient un second moteur de calcul.\n\n'
+        'La comparaison des difficultes est instructive. Bitcoin Cash utilise '
+        'exactement le meme algorithme que Bitcoin, mais sa difficulte est bien '
+        'plus basse : les blocs y sont donc bien plus faciles a trouver. Ce '
+        'n\'est pas un defaut de conception, c\'est le reflet de la puissance '
+        'qui s\'y consacre. Et si la recompense vaut cent fois moins cher, le '
+        'compte revient au meme.\n\n'
+        'La difficulte se reajuste toujours pour maintenir l\'intervalle entre '
+        'blocs. Elle mesure la concurrence, pas la qualite.\n\n'
+        'Deux cas particuliers valent le detour : Namecoin, qui se mine en meme '
+        'temps que Bitcoin sans calcul supplementaire, et Ethereum, qui a '
+        'abandonne la preuve de travail en 2022 - liberant des millions de '
+        'cartes graphiques qui ont peuple toutes les autres chaines.',
+    Icons.currency_bitcoin_rounded,
+  ),
+  _ChapterData(
     'Compiler l\'APK et le .exe',
     'Le projet est compile par GitHub Actions, pas par ton telephone. A chaque '
         'envoi de code sur la branche main, GitHub construit :\n\n'
