@@ -44,6 +44,8 @@ SYMBOLES = {
     "coins": "Coin",
     "mining_ranking": "RankedCoin",
     "block_feed": "BlockFeed",
+    "thermal_guard": "ThermalGuard",
+    "session_export": "SessionExport",
     "ranking_card": "RankingCard",
     "block_feed_card": "BlockFeedCard",
     "hardware_card": "HardwareCard",

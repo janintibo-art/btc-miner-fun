@@ -606,6 +606,14 @@ class _StatsGrid extends StatelessWidget {
       _StatData('Parts en attente', m.pendingShares.toString(), Icons.hourglass_bottom_rounded, AppColors.violet),
       _StatData('Chaine', m.activeCoinSymbol, Icons.link_rounded,
           AppColors.mint),
+      if (m.temperature != null)
+        _StatData(
+            'Temperature',
+            '${m.temperature!.toStringAsFixed(1)} °C',
+            Icons.thermostat_rounded,
+            m.thermalGuard.isThrottling(m.temperature)
+                ? AppColors.coral
+                : AppColors.mint),
       _StatData('Algorithme', m.algorithm.label, Icons.functions_rounded,
           AppColors.violet),
       _StatData('Moteur', m.hashMode.label, Icons.speed_rounded, AppColors.cyan),

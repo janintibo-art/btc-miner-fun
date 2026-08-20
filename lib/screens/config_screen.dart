@@ -548,6 +548,57 @@ class _ConfigScreenState extends State<ConfigScreen> {
         // Sur ordinateur, ni l'ecran ni le service Android n'ont de sens :
         // le bloc entier disparait plutot que d'afficher un reglage inerte.
         if (PlatformProfile.canKeepScreenOn) ...[
+          const SectionLabel('Chaleur'),
+          AppCard(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                SwitchListTile(
+                  contentPadding: EdgeInsets.zero,
+                  value: m.thermalGuardEnabled,
+                  activeColor: AppColors.amber,
+                  onChanged: m.setThermalGuardEnabled,
+                  title: const Text('Limiteur thermique',
+                      style: TextStyle(
+                          fontSize: 14.5, fontWeight: FontWeight.w700)),
+                  subtitle: const Text(
+                    'Ralentit automatiquement quand l\'appareil chauffe, et '
+                    'rend la cadence des qu\'il refroidit.',
+                    style: TextStyle(
+                        fontSize: 12, height: 1.45, color: AppColors.muted),
+                  ),
+                ),
+                if (m.temperature != null) ...[
+                  const Divider(height: 20),
+                  Text(m.thermalGuard.describe(m.temperature),
+                      style: mono(
+                        size: 12.5,
+                        color: m.thermalGuard.isThrottling(m.temperature)
+                            ? AppColors.amber
+                            : AppColors.mint,
+                      )),
+                  if (m.throttledIntensity != null)
+                    Padding(
+                      padding: const EdgeInsets.only(top: 4),
+                      child: Text(
+                        'Cadence ramenee a ${m.throttledIntensity} % au lieu de '
+                        '${m.intensity} %.',
+                        style: mono(size: 11, color: AppColors.dim),
+                      ),
+                    ),
+                ],
+                const SizedBox(height: 8),
+                const Text(
+                  'La mesure vient du capteur de la batterie, le seul lisible '
+                  'sans permission. Il ne donne pas la temperature du '
+                  'processeur, mais il en suit fidelement l\'echauffement.',
+                  style: TextStyle(
+                      fontSize: 11.5, height: 1.5, color: AppColors.muted),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 18),
           const SectionLabel('Ecran et arriere-plan'),
           AppCard(
             child: Column(
@@ -573,8 +624,9 @@ class _ConfigScreenState extends State<ConfigScreen> {
                   'Sur Android, un service de premier plan prend le relais des '
                   'que le minage demarre : le calcul continue ecran eteint, et '
                   'une notification permanente affiche la puissance et les '
-                  'parts. Fermer l\'application depuis la liste des taches '
-                  'arrete tout.',
+                  'parts. Elle porte un bouton Arreter, qui coupe le minage '
+                  'sans ouvrir l\'application. Fermer l\'application depuis la '
+                  'liste des taches arrete tout egalement.',
                   style:
                       TextStyle(fontSize: 12, height: 1.5, color: AppColors.muted),
                 ),

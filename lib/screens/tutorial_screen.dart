@@ -360,6 +360,26 @@ const _chapters = <_ChapterData>[
     Icons.rss_feed_rounded,
   ),
   _ChapterData(
+    'Chaleur, arret a distance, archives',
+    'Le limiteur thermique surveille la temperature de la batterie une fois '
+        'toutes les cinq secondes. A partir de 39 degres il reduit '
+        'progressivement la cadence, a 43 il descend au minimum, et il rend '
+        'tout des que l\'appareil refroidit. La baisse est graduelle et non '
+        'par paliers : un reglage brutal ferait osciller la machine entre '
+        'chaud et froid.\n\n'
+        'La mesure vient du capteur de la batterie, le seul lisible sans '
+        'permission particuliere. Il ne donne pas la temperature du '
+        'processeur, mais sur un telephone les deux sont a quelques '
+        'centimetres l\'un de l\'autre.\n\n'
+        'La notification porte desormais un bouton Arreter : le minage se coupe '
+        'sans ouvrir l\'application.\n\n'
+        'Enfin, l\'onglet Historique permet d\'exporter toutes tes sessions au '
+        'format CSV. Sur ordinateur, un fichier est ecrit dans ton dossier '
+        'personnel ; sur telephone, le contenu part dans le presse-papiers, '
+        'l\'acces aux fichiers y etant cloisonne.',
+    Icons.thermostat_rounded,
+  ),
+  _ChapterData(
     'Compiler l\'APK et le .exe',
     'Le projet est compile par GitHub Actions, pas par ton telephone. A chaque '
         'envoi de code sur la branche main, GitHub construit :\n\n'

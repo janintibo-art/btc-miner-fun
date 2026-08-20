@@ -62,6 +62,16 @@ class MiningService : Service() {
     override fun onBind(intent: Intent?): IBinder? = null
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
+        // Arret demande depuis la notification : on leve le drapeau que Dart
+        // consulte chaque seconde, puis on s'arrete proprement.
+        if (intent?.action == ACTION_STOP) {
+            stopRequested = true
+            releaseWakeLock()
+            stopForeground(true)
+            stopSelf()
+            return START_NOT_STICKY
+        }
+
         val title = intent?.getStringExtra("title") ?: "Minage en cours"
         val text = intent?.getStringExtra("text") ?: ""
 
@@ -106,6 +116,13 @@ class MiningService : Service() {
     companion object {
         const val CHANNEL_ID = "mining"
         const val NOTIFICATION_ID = 4711
+        const val ACTION_STOP = "btc_miner_fun.STOP"
+
+        // Leve par le bouton "Arreter" de la notification, lu puis remis a
+        // zero par Dart. Evite d'avoir a reveiller l'application depuis le
+        // service : le processus est de toute facon vivant tant qu'il mine.
+        @Volatile
+        var stopRequested: Boolean = false
 
         fun updateNotification(context: Context, title: String, text: String) {
             createChannel(context)
@@ -147,12 +164,18 @@ class MiningService : Service() {
                 Notification.Builder(context)
             }
 
+            val stopIntent = Intent(context, MiningService::class.java)
+            stopIntent.action = ACTION_STOP
+            val stopPending =
+                PendingIntent.getService(context, 1, stopIntent, pendingFlags)
+
             builder
                 .setContentTitle(title)
                 .setContentText(text)
                 .setSmallIcon(context.applicationInfo.icon)
                 .setOngoing(true)
                 .setOnlyAlertOnce(true)
+                .addAction(android.R.drawable.ic_media_pause, "Arreter", stopPending)
             if (pending != null) builder.setContentIntent(pending)
             return builder.build()
         }
@@ -171,7 +194,10 @@ print("MiningService.kt ecrit.")
 MAIN_KT = r'''package __PACKAGE__
 
 import android.Manifest
+import android.content.Context
 import android.content.Intent
+import android.content.IntentFilter
+import android.os.BatteryManager
 import android.content.pm.PackageManager
 import android.os.Build
 import android.view.WindowManager
@@ -213,7 +239,27 @@ class MainActivity : FlutterActivity() {
                     }
                     "stop" -> {
                         stopService(Intent(this, MiningService::class.java))
+                        MiningService.stopRequested = false
                         result.success(true)
+                    }
+                    // Temperature de la batterie, en degres. C'est le seul
+                    // capteur thermique lisible sans permission ; il suit de
+                    // pres l'echauffement du processeur.
+                    "temperature" -> {
+                        val intent = registerReceiver(
+                            null,
+                            IntentFilter(Intent.ACTION_BATTERY_CHANGED)
+                        )
+                        val tenths = intent?.getIntExtra(
+                            BatteryManager.EXTRA_TEMPERATURE, -1
+                        ) ?: -1
+                        result.success(if (tenths < 0) -1.0 else tenths / 10.0)
+                    }
+                    // Drapeau leve par le bouton "Arreter" de la notification.
+                    "consume_stop_request" -> {
+                        val requested = MiningService.stopRequested
+                        MiningService.stopRequested = false
+                        result.success(requested)
                     }
                     else -> result.notImplemented()
                 }

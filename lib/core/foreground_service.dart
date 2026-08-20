@@ -46,6 +46,33 @@ class ForegroundService {
     }
   }
 
+  /// Temperature de la batterie, en degres, ou null si indisponible.
+  ///
+  /// C'est le seul capteur thermique lisible sans permission particuliere.
+  /// Il ne mesure pas le processeur, mais il en suit fidelement
+  /// l'echauffement : sur un telephone, les deux sont a quelques centimetres.
+  static Future<double?> batteryTemperature() async {
+    if (!isSupported) return null;
+    try {
+      final value = await _channel.invokeMethod<double>('temperature');
+      if (value == null || value < 0) return null;
+      return value;
+    } catch (_) {
+      return null;
+    }
+  }
+
+  /// Vrai si l'utilisateur a touche "Arreter" dans la notification. Le
+  /// drapeau est remis a zero par la lecture.
+  static Future<bool> consumeStopRequest() async {
+    if (!isSupported) return false;
+    try {
+      return await _channel.invokeMethod<bool>('consume_stop_request') ?? false;
+    } catch (_) {
+      return false;
+    }
+  }
+
   static Future<void> stop() async {
     if (!isSupported) return;
     try {

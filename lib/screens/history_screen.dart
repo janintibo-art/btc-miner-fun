@@ -1,10 +1,12 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 
 import '../app_theme.dart';
 import '../core/bitcoin_utils.dart';
 import '../core/session.dart';
 import '../state/miner_controller.dart';
+import '../core/session_export.dart';
 import '../widgets/app_card.dart';
 import '../widgets/benchmark_card.dart';
 
@@ -58,6 +60,12 @@ class HistoryScreen extends StatelessWidget {
                 child: SectionLabel('Sessions (${m.sessions.length})')),
             if (m.sessions.isNotEmpty)
               TextButton(
+                onPressed: () => _exportSessions(context, m),
+                child: const Text('Exporter',
+                    style: TextStyle(color: AppColors.cyan, fontSize: 12)),
+              ),
+            if (m.sessions.isNotEmpty)
+              TextButton(
                 onPressed: () => _confirmClear(context, m),
                 child: const Text('Effacer',
                     style: TextStyle(color: AppColors.muted, fontSize: 12)),
@@ -76,6 +84,28 @@ class HistoryScreen extends StatelessWidget {
           ...m.sessions.map((s) => _SessionTile(session: s)),
       ],
     );
+  }
+
+  /// Sur ordinateur, un fichier ; sur telephone, le presse-papiers.
+  Future<void> _exportSessions(BuildContext context, MinerController m) async {
+    final csv = SessionExport.toCsv(m.sessions);
+    final chemin = await SessionExport.writeToDisk(csv);
+    if (!context.mounted) return;
+
+    if (chemin != null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Fichier ecrit : $chemin')),
+      );
+    } else {
+      await Clipboard.setData(ClipboardData(text: csv));
+      if (!context.mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Sessions copiees au format CSV : colle-les dans un '
+              'tableur ou une note.'),
+        ),
+      );
+    }
   }
 
   void _confirmClear(BuildContext context, MinerController m) {

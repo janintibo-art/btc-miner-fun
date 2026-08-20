@@ -22,6 +22,7 @@ import '../core/price_service.dart';
 import '../core/wallet_watch.dart';
 import '../core/miner_engine.dart';
 import '../core/session.dart';
+import '../core/thermal_guard.dart';
 import '../core/stratum_client.dart';
 import '../core/stratum_job.dart';
 
@@ -84,6 +85,7 @@ class MinerController extends ChangeNotifier {
   int intensity = 100; // 10 a 100 %
   int autoStopMinutes = 0; // 0 = pas d'arret automatique
   bool keepScreenOn = false;
+  bool thermalGuardEnabled = true;
   HashMode hashMode = HashMode.midstate;
   NonceStrategy nonceStrategy = NonceStrategy.signature;
   String signaturePhrase = '';
@@ -113,6 +115,9 @@ class MinerController extends ChangeNotifier {
   bool coinStatsLoading = false;
   final List<MinedBlock> recentBlocks = <MinedBlock>[];
   bool blocksLoading = false;
+  final ThermalGuard thermalGuard = ThermalGuard();
+  double? temperature;
+  int? throttledIntensity;
   String activeCoinSymbol = 'BTC';
   WalletBalance? balance;
   bool balanceLoading = false;
@@ -177,6 +182,7 @@ class MinerController extends ChangeNotifier {
     intensity = p.getInt('intensity') ?? 100;
     autoStopMinutes = p.getInt('autoStopMinutes') ?? 0;
     keepScreenOn = p.getBool('keepScreenOn') ?? false;
+    thermalGuardEnabled = p.getBool('thermalGuard') ?? true;
     hashMode = HashModeInfo.fromName(p.getString('hashMode'));
     observeBits = p.getInt('observeBits') ?? 24;
     lifetimeBestDifficulty = p.getDouble('lifetimeBest') ?? 0;
@@ -249,6 +255,7 @@ class MinerController extends ChangeNotifier {
     await p.setInt('intensity', intensity);
     await p.setInt('autoStopMinutes', autoStopMinutes);
     await p.setBool('keepScreenOn', keepScreenOn);
+    await p.setBool('thermalGuard', thermalGuardEnabled);
     await p.setString('hashMode', hashMode.name);
     await p.setString('coin', activeCoinSymbol);
     await p.setInt('observeBits', observeBits);
@@ -347,6 +354,7 @@ class MinerController extends ChangeNotifier {
       history.add(hashrate);
       if (history.length > 60) history.removeAt(0);
       if (backgroundServiceActive && ++tick % 10 == 0) _updateNotification();
+      if (tick % 5 == 0) _checkDeviceState();
       notifyListeners();
     });
 
@@ -987,6 +995,42 @@ class MinerController extends ChangeNotifier {
     }
     benchmarkRunning = false;
     notifyListeners();
+  }
+
+  void setThermalGuardEnabled(bool value) {
+    thermalGuardEnabled = value;
+    if (!value) {
+      throttledIntensity = null;
+      _engine.setIntensity(intensity);
+    }
+    notifyListeners();
+  }
+
+  /// Surveillance thermique et bouton d'arret de la notification, verifies
+  /// une fois par seconde depuis le ticker existant.
+  Future<void> _checkDeviceState() async {
+    if (await ForegroundService.consumeStopRequest()) {
+      log('Arret demande depuis la notification.');
+      await stop();
+      return;
+    }
+
+    if (!thermalGuardEnabled) return;
+    final reading = await ForegroundService.batteryTemperature();
+    if (reading == null) return;
+    temperature = reading;
+
+    final target = thermalGuard.intensityFor(reading, intensity);
+    if (target != (throttledIntensity ?? intensity)) {
+      throttledIntensity = target == intensity ? null : target;
+      _engine.setIntensity(target);
+      if (throttledIntensity != null) {
+        log('Appareil a ${reading.toStringAsFixed(1)} °C : cadence ramenee '
+            'a $target %.');
+      } else {
+        log('Temperature revenue a la normale : cadence rendue.');
+      }
+    }
   }
 
   void setKeepScreenOn(bool value) {
