@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import '../core/chain_network.dart';
 import '../core/my_chain.dart';
 import '../core/my_chain_miner.dart';
 
@@ -23,6 +24,14 @@ class ChainController extends ChangeNotifier {
   ChainVerdict? lastVerdict;
   final List<String> log = <String>[];
 
+  /// Adresse du serveur de chaine partagee. Vide : la chaine reste locale.
+  String serverUrl = '';
+  RemoteHead? remoteHead;
+  bool syncing = false;
+
+  bool get isShared => serverUrl.trim().isNotEmpty;
+  ChainNetwork get _network => ChainNetwork(serverUrl);
+
   static const int _batch = 120000;
 
   bool get exists => chain != null && chain!.blocks.isNotEmpty;
@@ -30,6 +39,7 @@ class ChainController extends ChangeNotifier {
   Future<void> load() async {
     final prefs = await SharedPreferences.getInstance();
     chain = MyChain.tryDecode(prefs.getString('myChain'));
+    serverUrl = prefs.getString('chainServer') ?? '';
     notifyListeners();
   }
 
@@ -38,6 +48,75 @@ class ChainController extends ChangeNotifier {
     if (current == null) return;
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString('myChain', current.encode());
+  }
+
+  Future<void> setServerUrl(String url) async {
+    serverUrl = url.trim();
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString('chainServer', serverUrl);
+    remoteHead = null;
+    _note(serverUrl.isEmpty
+        ? 'Chaine repassee en local.'
+        : 'Serveur configure : $serverUrl');
+    notifyListeners();
+  }
+
+  /// Confronte la chaine locale a celle du serveur.
+  ///
+  /// La regle est celle de Bitcoin : la chaine qui totalise le plus de travail
+  /// l'emporte. Si celle du serveur est plus longue, on l'adopte ; si c'est la
+  /// notre, on la propose.
+  Future<void> synchronise() async {
+    if (!isShared || syncing) return;
+    syncing = true;
+    notifyListeners();
+
+    try {
+      final tete = await _network.head();
+      remoteHead = tete;
+      if (tete == null) {
+        _note('Serveur injoignable.');
+        return;
+      }
+
+      final locale = chain;
+      if (tete.height == 0) {
+        if (locale != null && locale.blocks.isNotEmpty) {
+          final resultat = await _network.pushChain(locale);
+          _note(resultat.accepted
+              ? 'Serveur vide : ta chaine a ete adoptee.'
+              : 'Envoi refuse : ${resultat.message}');
+        } else {
+          _note('Serveur vide, et rien a envoyer.');
+        }
+        return;
+      }
+
+      if (locale == null || tete.height > locale.height) {
+        final distante = await _network.fetchChain();
+        if (distante == null) {
+          _note('Chaine distante illisible ou invalide : rien n\'est adopte.');
+          return;
+        }
+        chain = distante;
+        await _save();
+        _note('Chaine du serveur adoptee : ${distante.height} blocs.');
+        return;
+      }
+
+      if (locale.height > tete.height) {
+        final resultat = await _network.pushChain(locale);
+        _note(resultat.accepted
+            ? 'Ta chaine, plus longue, a ete adoptee par le serveur.'
+            : 'Envoi refuse : ${resultat.message}');
+        return;
+      }
+
+      _note('Deja synchronise : ${tete.height} blocs de part et d\'autre.');
+    } finally {
+      syncing = false;
+      notifyListeners();
+    }
   }
 
   void _note(String line) {
@@ -112,10 +191,26 @@ class ChainController extends ChangeNotifier {
             reward: candidate.reward,
             hashesTried: hashes,
           );
-          current.blocks.add(mined);
-          _note('Bloc ${mined.height} trouve en ${_formatCount(hashes)} '
-              'tentatives : ${mined.hash.substring(0, 16)}...');
-          await _save();
+          if (isShared) {
+            // Course entre mineurs : le premier arrive au serveur gagne.
+            final resultat = await _network.submitBlock(mined);
+            if (resultat.accepted) {
+              current.blocks.add(mined);
+              _note('Bloc ${mined.height} accepte par le serveur en '
+                  '${_formatCount(hashes)} tentatives.');
+              await _save();
+            } else {
+              _note('Bloc ${mined.height} refuse : ${resultat.message}');
+              await synchronise();
+              notifyListeners();
+              break;
+            }
+          } else {
+            current.blocks.add(mined);
+            _note('Bloc ${mined.height} trouve en ${_formatCount(hashes)} '
+                'tentatives : ${mined.hash.substring(0, 16)}...');
+            await _save();
+          }
           notifyListeners();
         }
 

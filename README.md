@@ -74,6 +74,12 @@ regenere a chaque compilation avec `flutter create`.
 Sur Android, autorise l'installation depuis une source inconnue pour ton
 gestionnaire de fichiers.
 
+## Le serveur
+
+Le dossier `server/` contient un coordinateur Node.js sans dependance, pour
+partager la chaine du Tibo entre plusieurs mineurs. Voir
+`server/LISEZMOI.md` pour le deployer gratuitement.
+
 ## Le site
 
 Le dossier `site/` contient la page publique du Tibo, publiee gratuitement par

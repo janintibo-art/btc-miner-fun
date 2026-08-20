@@ -25,6 +25,8 @@ class _MyChainScreenState extends State<MyChainScreen> {
   final _symbol = TextEditingController(text: 'TIBO');
   final _genesis = TextEditingController(text: 'Le premier bloc de ma monnaie');
   final _message = TextEditingController(text: 'Mine par moi');
+  final _serveur = TextEditingController();
+  bool _serveurCharge = false;
   int _difficultyLevel = 2;
 
   @override
@@ -33,6 +35,7 @@ class _MyChainScreenState extends State<MyChainScreen> {
     _symbol.dispose();
     _genesis.dispose();
     _message.dispose();
+    _serveur.dispose();
     super.dispose();
   }
 
@@ -207,6 +210,10 @@ class _MyChainScreenState extends State<MyChainScreen> {
   // -------------------------------------------------------------------------
 
   Widget _chainView(ChainController c) {
+    if (!_serveurCharge) {
+      _serveur.text = c.serverUrl;
+      _serveurCharge = true;
+    }
     final chain = c.chain!;
     final tip = chain.tip!;
     final difficulty = difficultyFromBits(tip.bits, chain.rules.genesisBits);
@@ -330,12 +337,116 @@ class _MyChainScreenState extends State<MyChainScreen> {
             ],
           ),
         ),
+        if (c.log.isNotEmpty) ...[
+          const SizedBox(height: 16),
+          AppCard(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text('JOURNAL', style: label()),
+                const SizedBox(height: 8),
+                ...c.log.take(6).map((ligne) => Padding(
+                      padding: const EdgeInsets.only(bottom: 5),
+                      child: Text(ligne,
+                          style: mono(size: 10.5, color: AppColors.muted)),
+                    )),
+              ],
+            ),
+          ),
+        ],
         const SizedBox(height: 20),
         SectionLabel('Les blocs (${chain.height})'),
         ...chain.blocks.reversed.take(30).map((block) => _BlockTile(
               block: block,
               rules: chain.rules,
             )),
+        const SizedBox(height: 16),
+        AppCard(
+          accent: c.isShared ? AppColors.mint.withOpacity(.35) : null,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text('CHAINE PARTAGEE', style: label()),
+              const SizedBox(height: 8),
+              const Text(
+                'Avec un serveur, plusieurs personnes minent la meme chaine et '
+                'se disputent chaque bloc. Le serveur ne mine pas : il verifie '
+                'la preuve de travail, impose la difficulte et la recompense, '
+                'et garde la chaine qui totalise le plus de travail.',
+                style: TextStyle(
+                    fontSize: 12, height: 1.5, color: AppColors.muted),
+              ),
+              const SizedBox(height: 12),
+              TextField(
+                controller: _serveur,
+                enabled: !c.mining,
+                style: mono(size: 12),
+                decoration: const InputDecoration(
+                  labelText: 'Adresse du serveur',
+                  hintText: 'https://mon-serveur.onrender.com',
+                  helperText: 'Laisse vide pour garder la chaine sur cet '
+                      'appareil uniquement.',
+                  helperMaxLines: 2,
+                ),
+              ),
+              const SizedBox(height: 12),
+              Row(
+                children: [
+                  Expanded(
+                    child: OutlinedButton(
+                      onPressed: c.mining
+                          ? null
+                          : () => c.setServerUrl(_serveur.text),
+                      style: OutlinedButton.styleFrom(
+                        foregroundColor: AppColors.ink,
+                        side: const BorderSide(color: AppColors.line),
+                        padding: const EdgeInsets.symmetric(vertical: 12),
+                      ),
+                      child: const Text('Enregistrer'),
+                    ),
+                  ),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: FilledButton.icon(
+                      onPressed: !c.isShared || c.mining || c.syncing
+                          ? null
+                          : c.synchronise,
+                      style: FilledButton.styleFrom(
+                        backgroundColor: AppColors.mint,
+                        foregroundColor: Colors.black,
+                        padding: const EdgeInsets.symmetric(vertical: 12),
+                      ),
+                      icon: c.syncing
+                          ? const SizedBox(
+                              width: 14,
+                              height: 14,
+                              child: CircularProgressIndicator(
+                                  strokeWidth: 2, color: Colors.black),
+                            )
+                          : const Icon(Icons.sync_rounded, size: 17),
+                      label: const Text('Synchroniser'),
+                    ),
+                  ),
+                ],
+              ),
+              if (c.remoteHead != null) ...[
+                const SizedBox(height: 12),
+                Builder(builder: (context) {
+                  // Le texte est compose ici plutot que dans une interpolation
+                  // imbriquee : plus lisible, et sans piege de guillemets.
+                  final tete = c.remoteHead!.tip;
+                  final resume = tete == null
+                      ? 'chaine vide'
+                      : 'tete ${tete.substring(0, 16)}...';
+                  return Text(
+                    'Serveur : ${c.remoteHead!.height} bloc(s) - $resume',
+                    style: mono(size: 11, color: AppColors.mint),
+                  );
+                }),
+              ],
+            ],
+          ),
+        ),
         const SizedBox(height: 16),
         AppCard(
           child: Column(

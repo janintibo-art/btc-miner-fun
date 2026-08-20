@@ -50,6 +50,7 @@ SYMBOLES = {
     "my_chain_miner": "mineChainBatch",
     "chain_controller": "ChainController",
     "my_chain_screen": "MyChainScreen",
+    "chain_network": "ChainNetwork",
     "ranking_card": "RankingCard",
     "block_feed_card": "BlockFeedCard",
     "hardware_card": "HardwareCard",

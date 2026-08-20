@@ -404,6 +404,26 @@ const _chapters = <_ChapterData>[
     Icons.auto_awesome_rounded,
   ),
   _ChapterData(
+    'Partager ta chaine',
+    'Une chaine sur un seul appareil reste un exercice. Avec un serveur, elle '
+        'devient une petite economie : plusieurs personnes minent la meme '
+        'chaine et se disputent chaque bloc.\n\n'
+        'Le serveur ne mine pas et ne peut pas fabriquer de blocs. Il verifie '
+        'la preuve de travail, impose la difficulte issue du reajustement et '
+        'la recompense prevue par le bareme, et conserve la chaine qui '
+        'totalise le plus de travail - la regle exacte de Bitcoin, et non le '
+        'simple nombre de blocs.\n\n'
+        'L\'application ne lui fait pas confiance pour autant : toute chaine '
+        'recue est reverifiee ici, bloc par bloc, avant d\'etre adoptee.\n\n'
+        'Il reste une difference de fond avec Bitcoin : il faut faire '
+        'confiance a celui qui heberge le serveur pour ne pas effacer la '
+        'chaine. Le pair a pair sert precisement a supprimer cette confiance. '
+        'Le construire demanderait de gerer la decouverte des participants, la '
+        'propagation des blocs et les fourches concurrentes - un autre projet, '
+        'bien plus vaste.',
+    Icons.hub_rounded,
+  ),
+  _ChapterData(
     'Compiler l\'APK et le .exe',
     'Le projet est compile par GitHub Actions, pas par ton telephone. A chaque '
         'envoi de code sur la branche main, GitHub construit :\n\n'
