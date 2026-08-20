@@ -8,6 +8,7 @@ import '../core/coins.dart';
 import '../core/mining_algorithm.dart';
 import '../core/my_chain.dart';
 import '../state/chain_controller.dart';
+import '../state/local_currency_controller.dart';
 import '../state/miner_controller.dart';
 import '../widgets/app_card.dart';
 import '../widgets/ranking_card.dart';
@@ -249,8 +250,8 @@ class _CoinTile extends StatelessWidget {
                                   spacing: 1)),
                         ),
                       if (coin.obscure)
-                        Padding(
-                          padding: const EdgeInsets.only(right: 7),
+                        const Padding(
+                          padding: EdgeInsets.only(right: 7),
                           child: Icon(Icons.visibility_off_outlined,
                               size: 13, color: AppColors.dim),
                         ),
@@ -324,7 +325,7 @@ class _CoinTile extends StatelessWidget {
                         fontSize: 11.5, height: 1.5, color: AppColors.muted)),
               ),
               _Fact('Intervalle entre blocs',
-                  '${_formatMinutes(coin.blockMinutes)}'),
+                  _formatMinutes(coin.blockMinutes)),
               if (coin.blockReward > 0)
                 _Fact('Recompense', '${_formatReward(coin.blockReward)} '
                     '${coin.symbol}'),

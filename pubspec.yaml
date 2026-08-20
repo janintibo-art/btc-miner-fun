@@ -1,7 +1,7 @@
 name: btc_miner_fun
 description: "Mineur Bitcoin reel et pedagogique - Android + Windows"
 publish_to: 'none'
-version: 0.41.0+41
+version: 0.42.0+42
 
 environment:
   sdk: '>=3.7.0 <4.0.0'

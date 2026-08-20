@@ -110,6 +110,29 @@ for fichier in sorted(RACINE.rglob("*.dart")):
             "{0} : la classe {1} est definie mais jamais utilisee"
             .format(fichier, nom))
 
+    # 1 ter. Symbole connu utilise sans que son module soit importe.
+    #
+    #        Le pendant du controle suivant : celui-la signale un import
+    #        inutile, celui-ci un import manquant. C'est le defaut qui a fait
+    #        echouer la version 41 - un controleur utilise dans un ecran qui
+    #        ne l'importait pas.
+    for module, attendu in SYMBOLES.items():
+        noms = attendu if isinstance(attendu, list) else [attendu]
+        for symbole in noms:
+            # Recherche dans le code seul : un symbole cite dans un
+            # commentaire ou un libelle n'exige aucun import.
+            if not re.search(r"\b" + re.escape(symbole) + r"\b", sans_chaines):
+                continue
+            if module in source:
+                break
+            # Le fichier qui definit le symbole n'a evidemment pas a s'importer.
+            if fichier.stem == module:
+                break
+            problemes.append(
+                "{0} : {1} est utilise mais {2}.dart n'est pas importe"
+                .format(fichier, symbole, module))
+            break
+
     # 2. Imports relatifs dont le symbole principal est absent.
     for prefixe, cible in re.findall(r"import '((?:\.\./|\./)+)([^']+)\.dart'", source):
         chemin = (fichier.parent / prefixe / (cible + ".dart")).resolve()

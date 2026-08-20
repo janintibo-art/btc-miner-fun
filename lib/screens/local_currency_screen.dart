@@ -401,7 +401,7 @@ class _LocalCurrencyScreenState extends State<LocalCurrencyScreen> {
                       ],
                     ),
                   ),
-                  Text('${mouvement.amount.toStringAsFixed(2)}',
+                  Text(mouvement.amount.toStringAsFixed(2),
                       style: mono(
                         size: 12.5,
                         weight: FontWeight.w700,
