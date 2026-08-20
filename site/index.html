@@ -126,6 +126,16 @@
       <p id="chargement">Chargement de la chaîne…</p>
       <div class="grille" id="stats" hidden></div>
     </div>
+    <div class="carte genese" id="genese-carte" hidden>
+      <h3>Le message du bloc de genèse</h3>
+      <p class="genese-note">
+        Inscrit une seule fois, dans le tout premier bloc, et engagé dans sa
+        preuve de travail. Il ne peut plus être modifié sans refaire la chaîne
+        entière.
+      </p>
+      <blockquote id="genese-texte"></blockquote>
+    </div>
+
     <div class="carte" id="blocs-carte" hidden>
       <div class="defilant">
         <table>
@@ -229,6 +239,13 @@ function nombre(n) {
   return n.toLocaleString('fr-FR');
 }
 
+/// Premiere ligne du message, tronquee : le tableau doit rester lisible meme
+/// si un bloc porte un poeme.
+function apercu(message) {
+  const texte = (message || '').replace(/[<>]/g, '').split('\n')[0].trim();
+  return texte.length > 60 ? texte.slice(0, 57) + '…' : texte;
+}
+
 function hashDuBloc(bloc) {
   // Le hash est recalcule cote client a partir de l'en-tete : la page ne fait
   // pas confiance au fichier, elle verifie.
@@ -255,14 +272,22 @@ fetch('chain.json?v=' + Date.now())
       `<div class="stat"><div class="titre">${t}</div><div class="valeur">${v}</div></div>`
     ).join('');
 
-    const corps = document.getElementById('blocs');
+    // La genese porte souvent un texte long : il merite mieux qu'une cellule
+  // de tableau, et le tableau merite mieux qu'un pave.
+  const genese = blocs.find(b => b.h === 0);
+  if (genese && (genese.msg || '').trim().length > 0) {
+    document.getElementById('genese-carte').hidden = false;
+    document.getElementById('genese-texte').textContent = genese.msg;
+  }
+
+  const corps = document.getElementById('blocs');
     corps.innerHTML = blocs.slice().reverse().slice(0, 50).map(b => `
       <tr>
         <td class="hauteur">${b.h}</td>
         <td class="hash">${hashDuBloc(b)}</td>
         <td>${nombre(b.n || 0)}</td>
         <td>${nombre(b.x || 0)}</td>
-        <td>${(b.msg || '').replace(/[<>]/g, '')}</td>
+        <td>${apercu(b.msg)}</td>
       </tr>`).join('');
     document.getElementById('blocs-carte').hidden = blocs.length === 0;
   championnat(blocs);

@@ -186,11 +186,17 @@ class _MyChainScreenState extends State<MyChainScreen> {
               const SizedBox(height: 14),
               TextField(
                 controller: _genesis,
+                maxLines: 6,
+                minLines: 2,
+                keyboardType: TextInputType.multiline,
                 decoration: const InputDecoration(
                   labelText: 'Message du bloc de genese',
-                  helperText: 'Grave a jamais dans le premier bloc. Celui de '
-                      'Bitcoin citait un titre de journal du 3 janvier 2009.',
-                  helperMaxLines: 3,
+                  helperText: 'Grave a jamais dans le premier bloc, et engage '
+                      'dans sa preuve de travail. Celui de Bitcoin citait un '
+                      'titre de journal du 3 janvier 2009. Plusieurs milliers '
+                      'de caracteres sont acceptes, toutes ecritures '
+                      'comprises.',
+                  helperMaxLines: 5,
                 ),
               ),
             ],

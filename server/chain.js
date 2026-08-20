@@ -55,6 +55,15 @@ function meetsTarget(block) {
   return value <= targetFromBits(block.b);
 }
 
+// Longueur maximale du message inscrit dans un bloc.
+//
+// La genese a droit a beaucoup plus : elle n'est ecrite qu'une fois, et c'est
+// le seul endroit d'une chaine ou l'on s'adresse a ceux qui viendront. Le bloc
+// de genese de Bitcoin portait un titre de journal ; rien n'oblige a s'en
+// tenir a une ligne.
+const MAX_MSG_GENESE = 8000;
+const MAX_MSG = 500;
+
 function isPlainObject(value) {
   return value !== null && typeof value === 'object' && !Array.isArray(value);
 }
@@ -70,7 +79,8 @@ function hasValidShape(block) {
   if (typeof block.p !== 'string' || !/^[0-9a-f]{64}$/.test(block.p)) return false;
   if (typeof block.m !== 'string' || !/^[0-9a-f]{64}$/.test(block.m)) return false;
   if (typeof block.r !== 'number' || !isFinite(block.r) || block.r < 0) return false;
-  if (typeof block.msg !== 'string' || block.msg.length > 200) return false;
+  const limite = block.h === 0 ? MAX_MSG_GENESE : MAX_MSG;
+  if (typeof block.msg !== 'string' || block.msg.length > limite) return false;
   if (block.n > 0xffffffff || block.b > 0xffffffff || block.v > 0xffffffff) return false;
   return true;
 }
