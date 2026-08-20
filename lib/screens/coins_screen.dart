@@ -396,10 +396,7 @@ class _CoinTile extends StatelessWidget {
                   return SizedBox(
                     width: double.infinity,
                     child: OutlinedButton.icon(
-                      onPressed: () => Navigator.of(context).push(
-                        MaterialPageRoute<void>(
-                            builder: (_) => const MyChainScreen()),
-                      ),
+                      onPressed: () => Navigator.of(context).pop(),
                       style: OutlinedButton.styleFrom(
                         foregroundColor: AppColors.violet,
                         side: const BorderSide(color: AppColors.line),
@@ -499,6 +496,58 @@ class _Fact extends StatelessWidget {
                 )),
           ),
         ],
+      ),
+    );
+  }
+}
+
+/// Porte d'entree vers la chaine personnelle, tant qu'elle n'existe pas.
+///
+/// Elle avait ete retiree en version 36 comme faisant doublon avec la fiche du
+/// catalogue - sauf que cette fiche n'apparait qu'une fois la chaine creee.
+/// Sans chaine, il n'y avait donc plus aucun acces a l'ecran de creation.
+class _CreerMaMonnaie extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    return AppCard(
+      accent: AppColors.violet.withOpacity(.45),
+      child: InkWell(
+        onTap: () => Navigator.of(context).push(
+          MaterialPageRoute<void>(builder: (_) => const MyChainScreen()),
+        ),
+        child: Row(
+          children: [
+            Container(
+              width: 44,
+              height: 44,
+              decoration: BoxDecoration(
+                color: AppColors.violet.withOpacity(.14),
+                borderRadius: BorderRadius.circular(13),
+                border: Border.all(color: AppColors.violet.withOpacity(.45)),
+              ),
+              child: const Icon(Icons.auto_awesome_rounded,
+                  size: 21, color: AppColors.violet),
+            ),
+            const SizedBox(width: 14),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text('Creer ou rejoindre ta monnaie',
+                      style: TextStyle(
+                          fontSize: 14.5, fontWeight: FontWeight.w800)),
+                  const SizedBox(height: 4),
+                  Text(
+                    'Une vraie chaine, de vrais blocs, une valeur de zero. '
+                    'Rejoins celle d\'un serveur, ou fabrique la tienne.',
+                    style: mono(size: 10.5, color: AppColors.muted),
+                  ),
+                ],
+              ),
+            ),
+            const Icon(Icons.chevron_right_rounded, color: AppColors.muted),
+          ],
+        ),
       ),
     );
   }

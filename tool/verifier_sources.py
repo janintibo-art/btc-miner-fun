@@ -157,6 +157,28 @@ if controleur.exists():
             "lib/state/miner_controller.dart : membre '{0}' utilise par "
             "l'interface mais introuvable".format(nom))
 
+# 4 bis. Ecrans orphelins : un ecran que rien n'ouvre est inaccessible.
+#
+#        Ce defaut s'est produit en version 36 : la seule carte menant a
+#        l'ecran de creation de monnaie avait ete retiree comme redondante,
+#        rendant la fonction injoignable. Aucune erreur de compilation, aucun
+#        test en echec - juste une porte muree.
+ecrans = sorted((RACINE / "screens").glob("*_screen.dart"))
+sources_completes = "\n".join(
+    f.read_text(encoding="utf-8") for f in RACINE.rglob("*.dart"))
+
+for fichier in ecrans:
+    contenu = fichier.read_text(encoding="utf-8")
+    classes = re.findall(r"class (\w+Screen) extends", contenu)
+    for nom in classes:
+        # On cherche une ouverture ailleurs que dans sa propre definition.
+        ailleurs = sources_completes.replace(contenu, "")
+        ouvertures = len(re.findall(r"\b" + nom + r"\(", ailleurs))
+        if ouvertures == 0:
+            problemes.append(
+                "{0} : l'ecran {1} n'est ouvert nulle part - fonction "
+                "inaccessible".format(fichier, nom))
+
 # 5. Navigation : ecrans, titres, barre du bas et rail lateral doivent
 #    compter le meme nombre d'entrees.
 principal = pathlib.Path("lib/main.dart")
