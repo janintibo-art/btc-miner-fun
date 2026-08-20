@@ -1,3 +1,4 @@
 {
-  "serveur": "https://btc-miner-fun.onrender.com"
+  "serveur": "https://btc-miner-fun.onrender.com",
+  "note": "Adresse du serveur de chaine. Vide : la page lit le fichier chain.json depose a cote."
 }

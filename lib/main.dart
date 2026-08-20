@@ -15,6 +15,7 @@ import 'screens/lab_screen.dart';
 import 'screens/screensaver_screen.dart';
 import 'screens/tutorial_screen.dart';
 import 'state/chain_controller.dart';
+import 'state/local_currency_controller.dart';
 import 'state/miner_controller.dart';
 import 'widgets/futuristic_background.dart';
 
@@ -40,6 +41,9 @@ class BtcMinerApp extends StatelessWidget {
         // La chaine personnelle vit a part : elle ne partage rien avec le
         // minage reel, et surtout pas ses parts.
         ChangeNotifierProvider(create: (_) => ChainController()..load()),
+        // Le registre local : un troisieme etat, sans aucun lien avec les
+        // deux autres. C'est le propos.
+        ChangeNotifierProvider(create: (_) => LocalCurrencyController()..load()),
       ],
       child: MaterialApp(
         title: 'BTC Miner Fun',

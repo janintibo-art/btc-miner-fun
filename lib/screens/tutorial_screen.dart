@@ -461,6 +461,27 @@ const _chapters = <_ChapterData>[
     Icons.emoji_events_rounded,
   ),
   _ChapterData(
+    'Quand une chaine de blocs ne sert a rien',
+    'Une chaine de blocs sert a se passer d\'un tiers de confiance. C\'est sa '
+        'seule raison d\'etre, et c\'est ce qui justifie tout ce qu\'elle '
+        'coute : le minage, les cles privees, l\'irreversibilite des erreurs.\n\n'
+        'Pour une monnaie de village geree par la mairie, ce tiers de '
+        'confiance existe deja et personne ne veut s\'en passer. Une chaine y '
+        'apporterait donc un cout enorme pour resoudre un probleme qu\'on n\'a '
+        'pas - tout en imposant ses inconvenients : une phrase de recuperation '
+        'perdue, et l\'argent l\'est aussi.\n\n'
+        'L\'onglet Monnaies contient un registre local qui fonctionne '
+        'reellement : des comptes, des paiements instantanes, et surtout un '
+        'bouton d\'annulation. C\'est la difference la plus concrete avec ta '
+        'chaine, ou une erreur est definitive.\n\n'
+        'Aucun des deux modeles n\'est meilleur : ils repondent a des '
+        'questions differentes. Bitcoin existe pour envoyer de l\'argent a un '
+        'inconnu a l\'autre bout du monde sans permission. Une monnaie locale '
+        'existe pour que la boulangerie du village garde la valeur sur place. '
+        'Savoir lequel choisir vaut mieux que savoir coder les deux.',
+    Icons.storefront_rounded,
+  ),
+  _ChapterData(
     'Compiler l\'APK et le .exe',
     'Le projet est compile par GitHub Actions, pas par ton telephone. A chaque '
         'envoi de code sur la branche main, GitHub construit :\n\n'

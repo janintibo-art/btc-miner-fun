@@ -75,6 +75,7 @@
   }
   .bouton.creux { background: transparent; color: var(--or); border: 1px solid var(--ligne); }
   code { background: var(--panneau-haut); padding: 2px 6px; border-radius: 5px; font-size: .84em; color: var(--or-vif); }
+  .provenance { font-size: .78rem; color: var(--terne); margin: 16px 0 0; }
   footer { text-align: center; padding: 46px 0 60px; color: var(--terne); font-size: .8rem; }
   .avertissement { border-color: rgba(255,107,107,.45); }
   .avertissement h2 { color: #ff6b6b; }
@@ -125,6 +126,7 @@
     <div class="carte" id="etat">
       <p id="chargement">Chargement de la chaîne…</p>
       <div class="grille" id="stats" hidden></div>
+      <p id="source" class="provenance" hidden></p>
     </div>
     <div class="carte genese" id="genese-carte" hidden>
       <h3>Le message du bloc de genèse</h3>
@@ -234,72 +236,159 @@
   }
 })();
 
-// L'explorateur lit le fichier exporte depuis l'application.
+// L'explorateur interroge le serveur de chaine, et retombe sur le fichier
+// local s'il ne repond pas.
 function nombre(n) {
   return n.toLocaleString('fr-FR');
 }
 
-/// Premiere ligne du message, tronquee : le tableau doit rester lisible meme
-/// si un bloc porte un poeme.
+// Premiere ligne du message, tronquee : le tableau doit rester lisible meme
+// si un bloc porte un poeme.
 function apercu(message) {
   const texte = (message || '').replace(/[<>]/g, '').split('\n')[0].trim();
-  return texte.length > 60 ? texte.slice(0, 57) + '…' : texte;
+  return texte.length > 60 ? texte.slice(0, 57) + '\u2026' : texte;
 }
 
-function hashDuBloc(bloc) {
-  // Le hash est recalcule cote client a partir de l'en-tete : la page ne fait
-  // pas confiance au fichier, elle verifie.
-  return bloc.hash || '—';
+function hexInverse(hex) {
+  const octets = [];
+  for (let i = 0; i < hex.length; i += 2) {
+    octets.push(parseInt(hex.substr(i, 2), 16));
+  }
+  return octets.reverse();
 }
 
-fetch('config.json?v=' + Date.now())
-  .then(r => r.json())
-  .then(c => fetch((c.serveur || '').replace(/\/$/, '') + '/chain'))
-  .catch(() => fetch('chain.json?v=' + Date.now()))
-  .then(r => { if (!r.ok) throw new Error('absent'); return r.json(); })
-  .then(data => {
-    const regles = data.rules || {};
-    const blocs = data.blocks || [];
-    const solde = blocs.reduce((s, b) => s + (b.r || 0), 0);
-    const tentatives = blocs.reduce((s, b) => s + (b.x || 0), 0);
+// Le hash de chaque bloc est recalcule ici, a partir de son en-tete de 80
+// octets : la page verifie au lieu de croire le serveur sur parole.
+async function ajouterHashs(blocs) {
+  for (const b of blocs) {
+    if (b.hash) continue;
+    const entete = new Uint8Array(80);
+    const vue = new DataView(entete.buffer);
+    vue.setUint32(0, b.v, true);
+    hexInverse(b.p).forEach((o, i) => { entete[4 + i] = o; });
+    hexInverse(b.m).forEach((o, i) => { entete[36 + i] = o; });
+    vue.setUint32(68, b.t, true);
+    vue.setUint32(72, b.b, true);
+    vue.setUint32(76, b.n, true);
+    const premier = await crypto.subtle.digest('SHA-256', entete);
+    const second = await crypto.subtle.digest('SHA-256', premier);
+    b.hash = Array.from(new Uint8Array(second)).reverse()
+      .map(o => o.toString(16).padStart(2, '0')).join('');
+  }
+}
 
-    document.getElementById('chargement').hidden = true;
-    const stats = document.getElementById('stats');
-    stats.hidden = false;
-    stats.innerHTML = [
-      ['Blocs minés', nombre(blocs.length)],
-      ['En circulation', nombre(solde) + ' ' + (regles.symbol || 'TIBO')],
-      ['Tentatives cumulées', nombre(tentatives)],
-      ['Intervalle visé', (regles.target || 30) + ' s']
-    ].map(([t, v]) =>
-      `<div class="stat"><div class="titre">${t}</div><div class="valeur">${v}</div></div>`
-    ).join('');
+function championnat(blocs) {
+  const parMineur = new Map();
+  for (const b of blocs) {
+    if (b.h === 0) continue;
+    const nom = (b.msg || '').trim().split('\n')[0] || 'sans nom';
+    const score = parMineur.get(nom) || { nom, blocs: 0, total: 0, meilleur: null };
+    score.blocs++;
+    score.total += b.x || 0;
+    if (!score.meilleur || (b.x || 0) < (score.meilleur.x || 0)) score.meilleur = b;
+    parMineur.set(nom, score);
+  }
+  const scores = [...parMineur.values()].sort((a, b) =>
+    b.blocs - a.blocs || (a.total / a.blocs) - (b.total / b.blocs));
+  if (!scores.length) return;
 
-    // La genese porte souvent un texte long : il merite mieux qu'une cellule
-  // de tableau, et le tableau merite mieux qu'un pave.
+  document.getElementById('championnat-section').hidden = false;
+  document.getElementById('championnat').innerHTML = scores.slice(0, 15)
+    .map((s, i) => `
+      <tr>
+        <td class="hauteur">${i + 1}</td>
+        <td>${s.nom.replace(/[<>]/g, '')}</td>
+        <td>${s.blocs}</td>
+        <td>${nombre(Math.round(s.total / s.blocs))}</td>
+        <td>bloc ${s.meilleur.h} \u2014 ${nombre(s.meilleur.x || 0)}</td>
+      </tr>`).join('');
+}
+
+function afficher(data, source) {
+  const regles = data.rules || {};
+  const blocs = data.blocks || [];
+  const solde = blocs.reduce((s, b) => s + (b.r || 0), 0);
+  const tentatives = blocs.reduce((s, b) => s + (b.x || 0), 0);
+
+  document.getElementById('chargement').hidden = true;
+  const stats = document.getElementById('stats');
+  stats.hidden = false;
+  stats.innerHTML = [
+    ['Blocs minés', nombre(blocs.length)],
+    ['En circulation', nombre(solde) + ' ' + (regles.symbol || 'TIBO')],
+    ['Tentatives cumulées', nombre(tentatives)],
+    ['Intervalle visé', (regles.target || 30) + ' s']
+  ].map(([t, v]) =>
+    `<div class="stat"><div class="titre">${t}</div><div class="valeur">${v}</div></div>`
+  ).join('');
+
   const genese = blocs.find(b => b.h === 0);
   if (genese && (genese.msg || '').trim().length > 0) {
     document.getElementById('genese-carte').hidden = false;
     document.getElementById('genese-texte').textContent = genese.msg;
   }
 
-  const corps = document.getElementById('blocs');
-    corps.innerHTML = blocs.slice().reverse().slice(0, 50).map(b => `
+  document.getElementById('blocs').innerHTML = blocs.slice().reverse().slice(0, 50)
+    .map(b => `
       <tr>
         <td class="hauteur">${b.h}</td>
-        <td class="hash">${hashDuBloc(b)}</td>
+        <td class="hash">${b.hash || '\u2014'}</td>
         <td>${nombre(b.n || 0)}</td>
         <td>${nombre(b.x || 0)}</td>
         <td>${apercu(b.msg)}</td>
       </tr>`).join('');
-    document.getElementById('blocs-carte').hidden = blocs.length === 0;
+  document.getElementById('blocs-carte').hidden = blocs.length === 0;
+
   championnat(blocs);
-  })
-  .catch(() => {
+
+  const info = document.getElementById('source');
+  if (info) {
+    info.textContent = source;
+    info.hidden = false;
+  }
+}
+
+async function charger() {
+  let serveur = '';
+  try {
+    const config = await (await fetch('config.json?v=' + Date.now())).json();
+    serveur = (config.serveur || '').trim();
+  } catch (e) {
+    // Pas de configuration : on lira le fichier depose a cote.
+  }
+
+  if (serveur) {
     document.getElementById('chargement').textContent =
-      'Aucune chaîne publiée pour l\'instant. Exporte la tienne depuis ' +
-      'l\'application, puis dépose le fichier chain.json à côté de cette page.';
-  });
+      'Interrogation du serveur\u2026 (il peut mettre une minute a se reveiller)';
+    try {
+      const reponse = await fetch(serveur.replace(/\/+$/, '') + '/chain');
+      if (!reponse.ok) throw new Error('reponse ' + reponse.status);
+      const data = await reponse.json();
+      const blocs = data.blocks || [];
+      if (blocs.length > 0) {
+        await ajouterHashs(blocs);
+        afficher(data, 'Source : serveur de chaine, lu en direct.');
+        return;
+      }
+      afficher(data, 'Le serveur repond, mais aucune chaine n\'y est publiee.');
+      return;
+    } catch (e) {
+      // On tente la copie locale avant d'abandonner.
+    }
+  }
+
+  try {
+    const data = await (await fetch('chain.json?v=' + Date.now())).json();
+    afficher(data, serveur
+      ? 'Serveur injoignable : affichage de la derniere copie publiee.'
+      : 'Source : copie publiee dans le depot.');
+  } catch (e) {
+    document.getElementById('chargement').textContent =
+      'Aucune chaine disponible pour l\'instant.';
+  }
+}
+
+charger();
 </script>
 </body>
 </html>

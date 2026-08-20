@@ -11,6 +11,7 @@ import '../state/chain_controller.dart';
 import '../state/miner_controller.dart';
 import '../widgets/app_card.dart';
 import '../widgets/ranking_card.dart';
+import 'local_currency_screen.dart';
 import 'my_chain_screen.dart';
 
 /// Le catalogue des monnaies : algorithme, difficulte reelle, et ce que cette
@@ -106,6 +107,8 @@ class _CoinsScreenState extends State<CoinsScreen> {
           ],
         ),
         const SizedBox(height: 14),
+        const _MonnaieLocale(),
+        const SizedBox(height: 10),
         if (mienne == null && _filter != 2 && _filter != 3) ...[
           const _CreerMaMonnaie(),
           const SizedBox(height: 10),
@@ -549,6 +552,65 @@ class _CreerMaMonnaie extends StatelessWidget {
                   Text(
                     'Une vraie chaine, de vrais blocs, une valeur de zero. '
                     'Rejoins celle d\'un serveur, ou fabrique la tienne.',
+                    style: mono(size: 10.5, color: AppColors.muted),
+                  ),
+                ],
+              ),
+            ),
+            const Icon(Icons.chevron_right_rounded, color: AppColors.muted),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// Acces au registre de monnaie locale.
+///
+/// Sa place ici est volontaire : le catalogue compare des chaines entre elles,
+/// et celle-ci n'en est pas une. C'est justement ce qu'il faut voir.
+class _MonnaieLocale extends StatelessWidget {
+  const _MonnaieLocale();
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.watch<LocalCurrencyController>();
+
+    return AppCard(
+      accent: AppColors.mint.withOpacity(.4),
+      child: InkWell(
+        onTap: () => Navigator.of(context).push(
+          MaterialPageRoute<void>(builder: (_) => const LocalCurrencyScreen()),
+        ),
+        child: Row(
+          children: [
+            Container(
+              width: 44,
+              height: 44,
+              decoration: BoxDecoration(
+                color: AppColors.mint.withOpacity(.13),
+                borderRadius: BorderRadius.circular(13),
+                border: Border.all(color: AppColors.mint.withOpacity(.45)),
+              ),
+              child: const Icon(Icons.storefront_rounded,
+                  size: 21, color: AppColors.mint),
+            ),
+            const SizedBox(width: 14),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text('Monnaie locale',
+                      style: TextStyle(
+                          fontSize: 14.5, fontWeight: FontWeight.w800)),
+                  const SizedBox(height: 4),
+                  Text(
+                    c.exists
+                        ? '${c.ledger!.accounts.length} comptes - '
+                            '${c.ledger!.inCirculation.toStringAsFixed(0)} '
+                            '${c.ledger!.symbol} en circulation'
+                        : 'Sans chaine, sans minage, sans cle privee - '
+                            'et ca marche',
                     style: mono(size: 10.5, color: AppColors.muted),
                   ),
                 ],
