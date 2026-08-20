@@ -13,6 +13,7 @@ import '../core/block_feed.dart';
 import '../core/coins.dart';
 import '../core/mining_ranking.dart';
 import '../core/benchmark.dart';
+import '../core/celebration.dart';
 import '../core/foreground_service.dart';
 import '../core/hash_mode.dart';
 import '../core/mining_algorithm.dart';
@@ -952,6 +953,7 @@ class MinerController extends ChangeNotifier {
       if (difficulty >= milestone && !milestonesReached.contains(milestone)) {
         milestonesReached.add(milestone);
         lastMilestone = milestone;
+        Celebration.record();
         log('Palier franchi : difficulte $milestone atteinte.');
         SharedPreferences.getInstance().then((p) => p.setStringList(
             'milestones', milestonesReached.map((m) => m.toString()).toList()));

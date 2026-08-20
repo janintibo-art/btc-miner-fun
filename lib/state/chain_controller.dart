@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import '../core/celebration.dart';
 import '../core/chain_network.dart';
 import '../core/foreground_service.dart';
 import '../core/my_chain.dart';
@@ -262,6 +263,7 @@ class ChainController extends ChangeNotifier {
             reward: candidate.reward,
             hashesTried: hashes,
           );
+          Celebration.block();
           if (isShared) {
             // Course entre mineurs : le premier arrive au serveur gagne.
             final resultat = await _network.submitBlock(mined);
@@ -269,9 +271,11 @@ class ChainController extends ChangeNotifier {
               current.blocks.add(mined);
               _note('Bloc ${mined.height} accepte par le serveur en '
                   '${_formatCount(hashes)} tentatives.');
+              Celebration.accepted();
               await _save();
             } else {
               _note('Bloc ${mined.height} refuse : ${resultat.message}');
+              Celebration.rejected();
               await synchronise();
               notifyListeners();
               break;

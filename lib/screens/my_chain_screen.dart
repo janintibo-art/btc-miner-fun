@@ -6,10 +6,12 @@ import 'package:provider/provider.dart';
 
 import '../app_theme.dart';
 import '../core/bitcoin_utils.dart';
+import '../core/miner_ranking.dart';
 import '../core/my_chain.dart';
 import '../core/session_export.dart';
 import '../state/chain_controller.dart';
 import '../widgets/app_card.dart';
+import 'certificate_screen.dart';
 
 /// Ta monnaie : une chaine complete, avec de vrais blocs et de vraies preuves
 /// de travail. Tout est reel sauf le reseau.
@@ -417,11 +419,26 @@ class _MyChainScreenState extends State<MyChainScreen> {
             ),
           ),
         ],
+        if (chain.height > 1) ...[
+          const SizedBox(height: 20),
+          const SectionLabel('Championnat des mineurs'),
+          _Championnat(chain: chain),
+        ],
         const SizedBox(height: 20),
         SectionLabel('Les blocs (${chain.height})'),
         ...chain.blocks.reversed.take(30).map((block) => _BlockTile(
               block: block,
               rules: chain.rules,
+              onTap: block.height == 0
+                  ? null
+                  : () => Navigator.of(context).push(
+                        MaterialPageRoute<void>(
+                          builder: (_) => CertificateScreen(
+                            block: block,
+                            rules: chain.rules,
+                          ),
+                        ),
+                      ),
             )),
         const SizedBox(height: 16),
         AppCard(
@@ -644,10 +661,11 @@ class _Stat extends StatelessWidget {
 }
 
 class _BlockTile extends StatelessWidget {
-  const _BlockTile({required this.block, required this.rules});
+  const _BlockTile({required this.block, required this.rules, this.onTap});
 
   final MyBlock block;
   final ChainRules rules;
+  final VoidCallback? onTap;
 
   @override
   Widget build(BuildContext context) {
@@ -656,7 +674,9 @@ class _BlockTile extends StatelessWidget {
       padding: const EdgeInsets.only(bottom: 9),
       child: AppCard(
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-        child: Column(
+        child: InkWell(
+          onTap: onTap,
+          child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Row(
@@ -689,13 +709,115 @@ class _BlockTile extends StatelessWidget {
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis),
             const SizedBox(height: 5),
-            Text(
-              'nonce ${block.nonce} - ${formatCount(block.hashesTried)} '
-              'tentatives - ${formatBtc(block.reward)} ${rules.symbol}',
-              style: mono(size: 10, color: AppColors.dim),
+            Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    'nonce ${block.nonce} - '
+                    '${formatCount(block.hashesTried)} tentatives - '
+                    '${formatBtc(block.reward)} ${rules.symbol}',
+                    style: mono(size: 10, color: AppColors.dim),
+                  ),
+                ),
+                if (onTap != null)
+                  const Icon(Icons.workspace_premium_outlined,
+                      size: 15, color: AppColors.amber),
+              ],
             ),
           ],
+          ),
         ),
+      ),
+    );
+  }
+}
+
+/// Le palmares de la chaine : qui a trouve le plus de blocs, et qui a eu le
+/// plus de chance.
+class _Championnat extends StatelessWidget {
+  const _Championnat({required this.chain});
+
+  final MyChain chain;
+
+  @override
+  Widget build(BuildContext context) {
+    final scores = rankMiners(chain);
+    final chanceux = luckiestBlock(chain);
+    if (scores.isEmpty) return const SizedBox.shrink();
+
+    return AppCard(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            'Le nom du mineur est le message qu\'il grave dans ses blocs. '
+            'C\'est le seul champ que la preuve de travail engage, donc le seul '
+            'qui ne puisse pas etre change apres coup.',
+            style: TextStyle(fontSize: 11.5, height: 1.5, color: AppColors.muted),
+          ),
+          const SizedBox(height: 16),
+          ...scores.take(8).toList().asMap().entries.map((entree) {
+            final rang = entree.key + 1;
+            final score = entree.value;
+            return Padding(
+              padding: const EdgeInsets.only(bottom: 11),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  SizedBox(
+                    width: 24,
+                    child: Text('$rang',
+                        style: mono(
+                          size: 13,
+                          weight: FontWeight.w800,
+                          color: rang == 1 ? AppColors.amber : AppColors.dim,
+                        )),
+                  ),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(score.name,
+                            style: TextStyle(
+                              fontSize: 13,
+                              fontWeight:
+                                  rang == 1 ? FontWeight.w800 : FontWeight.w600,
+                            )),
+                        const SizedBox(height: 2),
+                        Text(
+                          '${formatCount(score.averageAttempts.round())} '
+                          'tentatives en moyenne - meilleur coup au bloc '
+                          '${score.bestBlock} en '
+                          '${formatCount(score.bestAttempts)}',
+                          style: mono(size: 10, color: AppColors.dim),
+                        ),
+                      ],
+                    ),
+                  ),
+                  Text('${score.blocks} bloc(s)',
+                      style: mono(size: 11.5, weight: FontWeight.w700)),
+                ],
+              ),
+            );
+          }),
+          if (chanceux != null) ...[
+            const Divider(height: 22),
+            Row(
+              children: [
+                const Icon(Icons.auto_awesome_rounded,
+                    size: 16, color: AppColors.mint),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Text(
+                    'Coup de chance de la chaine : bloc ${chanceux.height}, '
+                    'trouve en ${formatCount(chanceux.hashesTried)} tentatives.',
+                    style: mono(size: 11, color: AppColors.mint),
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ],
       ),
     );
   }

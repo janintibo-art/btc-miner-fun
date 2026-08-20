@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 
 import '../app_theme.dart';
 import '../core/address_validator.dart';
+import '../core/celebration.dart';
 import '../core/hash_mode.dart';
 import '../core/platform_profile.dart';
 import '../core/nonce_walker.dart';
@@ -634,6 +635,28 @@ class _ConfigScreenState extends State<ConfigScreen> {
             ),
           ),
         ],
+        const SectionLabel('Sons et vibrations'),
+        AppCard(
+          child: StatefulBuilder(
+            builder: (context, setInnerState) => SwitchListTile(
+              contentPadding: EdgeInsets.zero,
+              value: Celebration.enabled,
+              activeColor: AppColors.amber,
+              onChanged: (v) => setInnerState(() => Celebration.enabled = v),
+              title: const Text('Celebrer les trouvailles',
+                  style:
+                      TextStyle(fontSize: 14.5, fontWeight: FontWeight.w700)),
+              subtitle: const Text(
+                'Un clic a chaque bloc, deux quand le serveur l\'accepte, et '
+                'une petite fanfare pour un record. Uniquement des sons '
+                'systeme : rien n\'est telecharge.',
+                style: TextStyle(
+                    fontSize: 12, height: 1.45, color: AppColors.muted),
+              ),
+            ),
+          ),
+        ),
+        const SizedBox(height: 18),
         if (PlatformProfile.isDesktop) ...[
           const SectionLabel('Raccourcis clavier'),
           AppCard(

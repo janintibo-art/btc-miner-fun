@@ -138,8 +138,27 @@
     </div>
   </section>
 
+  <section id="championnat-section" hidden>
+    <h2><span class="num">03</span>Le championnat</h2>
+    <div class="carte">
+      <p>
+        Le nom d'un mineur est le message qu'il grave dans ses blocs. C'est le
+        seul champ que la preuve de travail engage : impossible de le changer
+        après coup sans refaire tout le travail.
+      </p>
+      <div class="defilant">
+        <table>
+          <thead>
+            <tr><th>#</th><th>Mineur</th><th>Blocs</th><th>Moyenne</th><th>Meilleur coup</th></tr>
+          </thead>
+          <tbody id="championnat"></tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+
   <section>
-    <h2><span class="num">03</span>Pourquoi zéro</h2>
+    <h2><span class="num">04</span>Pourquoi zéro</h2>
     <div class="carte avertissement">
       <h2 style="font-size:1.05rem;margin-bottom:12px">Une monnaie ne vaut pas par sa technique</h2>
       <p>
@@ -160,7 +179,7 @@
   </section>
 
   <section>
-    <h2><span class="num">04</span>L'application</h2>
+    <h2><span class="num">05</span>L'application</h2>
     <div class="carte">
       <p>
         Le Tibo est né dans une application qui mine aussi, pour de vrai, sur
@@ -246,6 +265,7 @@ fetch('chain.json?v=' + Date.now())
         <td>${(b.msg || '').replace(/[<>]/g, '')}</td>
       </tr>`).join('');
     document.getElementById('blocs-carte').hidden = blocs.length === 0;
+  championnat(blocs);
   })
   .catch(() => {
     document.getElementById('chargement').textContent =

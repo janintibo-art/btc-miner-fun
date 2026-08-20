@@ -441,6 +441,26 @@ const _chapters = <_ChapterData>[
     Icons.foundation_rounded,
   ),
   _ChapterData(
+    'Quatre plaisirs gratuits',
+    'Le certificat. Touche n\'importe quel bloc de ta chaine : tu obtiens sa '
+        'carte d\'identite, hash compris, prete a etre capturee et envoyee. '
+        'Le nombre de tentatives y figure - c\'est la seule mesure honnete de '
+        'ta chance ce jour-la.\n\n'
+        'La roulette, dans le labo. Les hachages defilent comme les rouleaux '
+        'd\'une machine a sous, les zeros de tete s\'allument. Une machine a '
+        'sous arrete ses rouleaux au bout de trois symboles ; il en faudrait '
+        'dix-neuf alignes pour un bloc Bitcoin. Regarde tourner deux minutes, '
+        'tu comprendras mieux qu\'avec n\'importe quel chiffre.\n\n'
+        'Le championnat. Sur une chaine partagee, chacun grave son nom dans '
+        'ses blocs, et le classement se calcule tout seul : qui en a trouve le '
+        'plus, qui a eu le plus de chance. Le nom est inscrit dans la preuve '
+        'de travail : impossible de le changer apres coup.\n\n'
+        'Les sons. Un clic quand un bloc tombe, deux quand le serveur '
+        'l\'accepte, une fanfare pour un record. Uniquement des sons systeme, '
+        'rien de telecharge, et debrayable dans les reglages.',
+    Icons.emoji_events_rounded,
+  ),
+  _ChapterData(
     'Compiler l\'APK et le .exe',
     'Le projet est compile par GitHub Actions, pas par ton telephone. A chaque '
         'envoi de code sur la branche main, GitHub construit :\n\n'

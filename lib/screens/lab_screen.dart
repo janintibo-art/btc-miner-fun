@@ -9,6 +9,7 @@ import '../core/bitcoin_utils.dart';
 import '../state/miner_controller.dart';
 import '../widgets/app_card.dart';
 import '../widgets/block_feed_card.dart';
+import 'hash_roulette_screen.dart';
 import '../widgets/hardware_card.dart';
 
 /// L'onglet Labo : tout ce qui se passe reellement, rendu observable.
@@ -52,6 +53,23 @@ class _LabScreenState extends State<LabScreen> {
           m: m,
           filter: _consoleFilter,
           onFilter: (f) => setState(() => _consoleFilter = f),
+        ),
+        const SizedBox(height: 8),
+        SizedBox(
+          width: double.infinity,
+          child: OutlinedButton.icon(
+            onPressed: () => Navigator.of(context).push(
+              MaterialPageRoute<void>(
+                  builder: (_) => const HashRouletteScreen()),
+            ),
+            style: OutlinedButton.styleFrom(
+              foregroundColor: AppColors.amber,
+              side: const BorderSide(color: AppColors.line),
+              padding: const EdgeInsets.symmetric(vertical: 13),
+            ),
+            icon: const Icon(Icons.casino_rounded, size: 18),
+            label: const Text('Roulette des hachages'),
+          ),
         ),
         const SizedBox(height: 20),
         const SectionLabel('Le reseau, en direct'),

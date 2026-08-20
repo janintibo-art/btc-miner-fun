@@ -46,11 +46,15 @@ SYMBOLES = {
     "block_feed": "BlockFeed",
     "thermal_guard": "ThermalGuard",
     "session_export": "SessionExport",
-    "my_chain": "MyChain",
+    "my_chain": ["MyChain", "MyBlock", "ChainRules"],
     "my_chain_miner": "mineChainBatch",
     "chain_controller": "ChainController",
     "my_chain_screen": "MyChainScreen",
     "chain_network": "ChainNetwork",
+    "celebration": "Celebration",
+    "hash_roulette_screen": "HashRouletteScreen",
+    "certificate_screen": "CertificateScreen",
+    "miner_ranking": ["MinerScore", "rankMiners", "luckiestBlock"],
     "ranking_card": "RankingCard",
     "block_feed_card": "BlockFeedCard",
     "hardware_card": "HardwareCard",
@@ -95,12 +99,24 @@ for fichier in sorted(RACINE.rglob("*.dart")):
                 fichier, prefixe, cible))
             continue
         nom_module = cible.split("/")[-1]
-        symbole = SYMBOLES.get(nom_module)
+        attendu = SYMBOLES.get(nom_module)
+        # Un module peut exporter plusieurs types : il suffit qu'un seul soit
+        # utilise pour que l'import se justifie.
+        symbole = attendu[0] if isinstance(attendu, list) else attendu
+        if isinstance(attendu, list):
+            if any(nom in corps for nom in attendu):
+                continue
+            problemes.append(
+                "{0} : import de {1}.dart inutilise ({2} absents)".format(
+                    fichier, nom_module, ", ".join(attendu)))
+            continue
         if symbole:
             # Un module peut etre importe pour son type comme pour sa
-            # fonction : on accepte les deux graphies.
+            # fonction, ou pour un type voisin du meme fichier : on accepte
+            # les graphies proches plutot que le seul symbole principal.
+            racine = symbole.rstrip('s')
             variantes = {symbole, symbole[0].lower() + symbole[1:],
-                         symbole[0].upper() + symbole[1:]}
+                         symbole[0].upper() + symbole[1:], racine}
         if symbole and not any(v in corps for v in variantes):
             problemes.append(
                 "{0} : import de {1}.dart inutilise ({2} absent)".format(
