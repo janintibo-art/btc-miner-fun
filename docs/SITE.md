@@ -16,7 +16,26 @@ L'adresse sera :
 Les liens de la page vers le depot et les telechargements se deduisent tout
 seuls de cette adresse : aucun nom a modifier dans le code.
 
-## Mettre la chaine a jour
+## La page lit le serveur en direct
+
+Depuis la version 33, `site/config.json` contient l'adresse du serveur de
+chaine. La page l'interroge a chaque visite : plus rien a publier a la main.
+
+    {
+      "serveur": "https://btc-miner-fun.onrender.com"
+    }
+
+Elle ne se contente pas d'afficher ce que le serveur envoie : elle **recalcule
+le hash de chaque bloc** dans le navigateur, a partir de son en-tete de 80
+octets. Verification faite sur le bloc reel 125552 de Bitcoin, dont elle
+retrouve le hash officiel.
+
+Si le serveur ne repond pas - l'instance gratuite s'endort apres quinze
+minutes - la page se rabat sur `chain.json` et l'indique clairement.
+
+Laisse `serveur` vide pour revenir au fonctionnement manuel.
+
+## Mettre la chaine a jour a la main (facultatif)
 
 1. Dans l'application, onglet Monnaies → ta monnaie → **Exporter chain.json**.
    Sur ordinateur, un fichier est ecrit dans ton dossier personnel ; sur

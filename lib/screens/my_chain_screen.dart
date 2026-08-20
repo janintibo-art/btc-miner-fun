@@ -95,6 +95,69 @@ class _MyChainScreenState extends State<MyChainScreen> {
           ),
         ),
         const SizedBox(height: 20),
+        const SectionLabel('Rejoindre une chaine existante'),
+        AppCard(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text(
+                'Si une chaine tourne deja sur un serveur - la tienne apres une '
+                'reinstallation, ou celle de quelqu\'un d\'autre - rejoins-la '
+                'plutot que d\'en creer une nouvelle. La genese doit etre '
+                'commune : deux chaines nees separement ne peuvent pas '
+                'fusionner, et le serveur refusera les blocs de l\'intruse.',
+                style: TextStyle(
+                    fontSize: 12.5, height: 1.5, color: AppColors.muted),
+              ),
+              const SizedBox(height: 14),
+              TextField(
+                controller: _serveur,
+                style: mono(size: 12),
+                decoration: const InputDecoration(
+                  labelText: 'Adresse du serveur',
+                  hintText: 'https://mon-serveur.onrender.com',
+                ),
+              ),
+              const SizedBox(height: 12),
+              SizedBox(
+                width: double.infinity,
+                child: FilledButton.icon(
+                  onPressed: c.syncing
+                      ? null
+                      : () async {
+                          final ok = await c.joinFromServer(_serveur.text);
+                          if (!mounted) return;
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                              content: Text(ok
+                                  ? 'Chaine rejointe.'
+                                  : 'Aucune chaine trouvee sur ce serveur.'),
+                            ),
+                          );
+                        },
+                  style: FilledButton.styleFrom(
+                    backgroundColor: AppColors.mint,
+                    foregroundColor: Colors.black,
+                    padding: const EdgeInsets.symmetric(vertical: 14),
+                  ),
+                  icon: c.syncing
+                      ? const SizedBox(
+                          width: 15,
+                          height: 15,
+                          child: CircularProgressIndicator(
+                              strokeWidth: 2, color: Colors.black),
+                        )
+                      : const Icon(Icons.download_rounded, size: 18),
+                  label: const Text('Rejoindre cette chaine',
+                      style: TextStyle(fontWeight: FontWeight.w700)),
+                ),
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: 20),
+        const SectionLabel('Ou en creer une nouvelle'),
+        const SizedBox(height: 4),
         const SectionLabel('Identite'),
         AppCard(
           child: Column(
@@ -452,14 +515,17 @@ class _MyChainScreenState extends State<MyChainScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text('PUBLIER LA CHAINE', style: label()),
+              Text('SAUVEGARDE', style: label()),
               const SizedBox(height: 8),
-              const Text(
-                'Exporte la chaine au format attendu par la page web. Depose '
-                'le fichier obtenu dans le dossier site du depot, sous le nom '
-                'chain.json : la page se met a jour toute seule a la '
-                'publication.',
-                style: TextStyle(
+              Text(
+                c.isShared
+                    ? 'La page web lit desormais le serveur en direct : tu n\'as '
+                        'plus rien a publier. Cet export ne sert qu\'a garder '
+                        'une copie de secours de la chaine.'
+                    : 'Exporte la chaine pour en garder une copie, ou pour la '
+                        'deposer dans le dossier site du depot sous le nom '
+                        'chain.json si tu n\'utilises pas de serveur.',
+                style: const TextStyle(
                     fontSize: 12, height: 1.5, color: AppColors.muted),
               ),
               const SizedBox(height: 12),
@@ -473,7 +539,7 @@ class _MyChainScreenState extends State<MyChainScreen> {
                     padding: const EdgeInsets.symmetric(vertical: 12),
                   ),
                   icon: const Icon(Icons.upload_file_rounded, size: 17),
-                  label: const Text('Exporter chain.json'),
+                  label: const Text('Exporter une copie'),
                 ),
               ),
             ],

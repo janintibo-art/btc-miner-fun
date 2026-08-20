@@ -134,6 +134,32 @@ class ChainController extends ChangeNotifier {
     notifyListeners();
   }
 
+  /// Recupere la chaine du serveur sans en creer une nouvelle.
+  ///
+  /// C'est le bon geste apres une reinstallation, ou pour rejoindre la chaine
+  /// de quelqu'un d'autre : la genese doit etre commune, sinon les blocs
+  /// mines ici seraient refuses par le serveur.
+  Future<bool> joinFromServer(String url) async {
+    await setServerUrl(url);
+    if (!isShared) return false;
+    syncing = true;
+    notifyListeners();
+    try {
+      final distante = await _network.fetchChain();
+      if (distante == null || distante.blocks.isEmpty) {
+        _note('Aucune chaine a rejoindre sur ce serveur.');
+        return false;
+      }
+      chain = distante;
+      await _save();
+      _note('Chaine rejointe : ${distante.height} blocs, genese commune.');
+      return true;
+    } finally {
+      syncing = false;
+      notifyListeners();
+    }
+  }
+
   Future<void> destroy() async {
     chain = null;
     lastVerdict = null;

@@ -65,6 +65,21 @@ telephone lui-meme).
 | POST    | `/chain` | proposer une chaine entiere (adoptee si plus dure)|
 | GET     | `/`      | page d'etat lisible                               |
 
+## La genese est verrouillee
+
+Des qu'une chaine est deposee, sa genese devient intangible. Toute chaine
+proposee ensuite avec une genese differente est refusee, meme si elle totalise
+plus de travail.
+
+Sans ce verrou, l'attaque etait triviale : miner cent blocs faciles dans son
+coin sur sa propre genese, puis les envoyer. Le travail cumule etant superieur,
+la chaine de tout le monde aurait ete remplacee. Essai fait : une chaine rivale
+de six blocs contre deux est desormais refusee, et le serveur rappelle la
+genese qu'il attend.
+
+C'est pourquoi l'application propose de **rejoindre** une chaine avant d'en
+creer une.
+
 ## Verifications effectuees avant livraison
 
 Le validateur a d'abord ete confronte au **bloc reel 125552 de Bitcoin** : il

@@ -106,8 +106,10 @@ function lireCorps(req) {
 
 function resume() {
   const tete = etat.blocks[etat.blocks.length - 1] || null;
+  const genese = etat.blocks[0] || null;
   return {
     height: etat.blocks.length,
+    genesis: genese ? blockHash(genese) : null,
     tip: tete ? blockHash(tete) : null,
     bits: tete ? tete.b : null,
     rules: etat.rules,
@@ -229,6 +231,23 @@ const serveur = http.createServer(async (req, res) => {
     const verdict = verifyChain(blocs, envoi.rules || etat.rules);
     if (!verdict.valid) {
       return repondre(res, 400, { accepted: false, reason: verdict.problem });
+    }
+
+    // La genese est le socle commun : une fois posee, elle ne change plus.
+    //
+    // Sans ce verrou, n'importe qui pourrait miner cent blocs faciles sur sa
+    // propre genese, totaliser plus de travail, et remplacer la chaine de
+    // tout le monde. C'est une chaine partagee, pas un concours.
+    if (etat.blocks.length > 0 && blocs.length > 0) {
+      const genesePlace = blockHash(etat.blocks[0]);
+      const geneseProposee = blockHash(blocs[0]);
+      if (genesePlace !== geneseProposee) {
+        return repondre(res, 409, {
+          accepted: false,
+          reason: 'genese differente : cette chaine n\'est pas la notre',
+          genesis: genesePlace,
+        });
+      }
     }
 
     // La regle de Bitcoin : c'est le travail cumule qui tranche, pas le

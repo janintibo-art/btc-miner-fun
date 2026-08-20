@@ -424,6 +424,23 @@ const _chapters = <_ChapterData>[
     Icons.hub_rounded,
   ),
   _ChapterData(
+    'La genese, socle commun',
+    'Deux chaines nees separement ne peuvent pas fusionner, meme si elles '
+        'suivent les memes regles. Leur premier bloc differe, donc tout ce qui '
+        'suit differe. C\'est vrai ici comme sur Bitcoin.\n\n'
+        'Concretement : pour miner avec quelqu\'un, il faut partir de sa '
+        'genese. L\'ecran de creation propose donc, avant toute chose, de '
+        '**rejoindre** une chaine existante depuis son serveur. C\'est aussi le '
+        'bon geste apres une reinstallation de l\'application : ta chaine n\'est '
+        'pas perdue, elle est sur le serveur.\n\n'
+        'Le serveur, lui, verrouille sa genese des le premier depot. Sans ce '
+        'verrou, n\'importe qui pourrait miner cent blocs faciles dans son coin '
+        'et remplacer la chaine de tout le monde en arrivant avec plus de '
+        'travail cumule. Essai fait : une chaine rivale trois fois plus longue '
+        'est refusee.',
+    Icons.foundation_rounded,
+  ),
+  _ChapterData(
     'Compiler l\'APK et le .exe',
     'Le projet est compile par GitHub Actions, pas par ton telephone. A chaque '
         'envoi de code sur la branche main, GitHub construit :\n\n'
