@@ -38,6 +38,10 @@ SYMBOLES = {
     "session": "MiningSession",
     "gpu_probe": "probeGpuDevices",
     "gpu_miner": "runGpuSelfTest",
+    "mining_algorithm": "MiningAlgorithm",
+    "scrypt": "Scrypt",
+    "coin_stats": "CoinStats",
+    "coins": "Coin",
     "hardware_card": "HardwareCard",
 }
 

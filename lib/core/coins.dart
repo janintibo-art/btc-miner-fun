@@ -8,7 +8,9 @@ enum PowAlgorithm {
           'le seul que cette application sait calculer.'),
   scrypt('Scrypt',
       'Concu pour demander beaucoup de memoire et resister aux machines '
-          'dediees. Le pari a echoue : les ASIC Scrypt existent depuis 2014.'),
+          'dediees. Le pari a echoue : les ASIC Scrypt existent depuis 2014. '
+          'Cette application sait le calculer, environ mille fois plus '
+          'lentement que SHA-256d.'),
   randomx('RandomX',
       'Genere un programme aleatoire que le processeur doit executer. '
           'Volontairement hostile aux machines dediees, il reste le seul '
@@ -224,10 +226,13 @@ const List<Coin> kCoins = <Coin>[
     symbol: 'LTC',
     name: 'Litecoin',
     algorithm: PowAlgorithm.scrypt,
-    support: MiningSupport.wrongAlgorithm,
+    support: MiningSupport.supported,
     blockMinutes: 2.5,
     blockReward: 6.25,
     blockchairSlug: 'litecoin',
+    pool: 'ltc.solomining.io',
+    poolPort: 5030,
+    addressRules: AddressRules(bech32Hrp: 'ltc', base58Versions: [0x30, 0x32]),
     summary: 'Cree en 2011 pour etre plus rapide et resister aux machines '
         'dediees. Se mine aujourd\'hui en meme temps que Dogecoin.',
   ),
@@ -235,10 +240,13 @@ const List<Coin> kCoins = <Coin>[
     symbol: 'DOGE',
     name: 'Dogecoin',
     algorithm: PowAlgorithm.scrypt,
-    support: MiningSupport.wrongAlgorithm,
+    support: MiningSupport.supported,
     blockMinutes: 1,
     blockReward: 10000,
     blockchairSlug: 'dogecoin',
+    pool: 'doge.solomining.io',
+    poolPort: 5040,
+    addressRules: AddressRules(base58Versions: [0x1E, 0x16]),
     summary: 'Ne d\'une plaisanterie en 2013, il est devenu la deuxieme chaine '
         'en Scrypt. Son minage est adosse a celui de Litecoin.',
   ),

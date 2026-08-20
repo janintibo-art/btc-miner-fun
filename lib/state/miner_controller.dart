@@ -13,6 +13,7 @@ import '../core/coins.dart';
 import '../core/benchmark.dart';
 import '../core/foreground_service.dart';
 import '../core/hash_mode.dart';
+import '../core/mining_algorithm.dart';
 import '../core/nonce_walker.dart';
 import '../core/platform_profile.dart';
 import '../core/price_service.dart';
@@ -155,7 +156,7 @@ class MinerController extends ChangeNotifier {
       startedAt == null ? Duration.zero : DateTime.now().difference(startedAt!);
 
   /// Verification complete : le code de controle de l'adresse est recalcule.
-  AddressCheck get walletCheck => checkBitcoinAddress(wallet);
+  AddressCheck get walletCheck => checkCoinAddress(wallet, activeCoin);
 
   bool get walletLooksValid => walletCheck.valid;
 
@@ -301,6 +302,8 @@ class MinerController extends ChangeNotifier {
     _pendingShares.clear();
     _authorized = false;
     _engine.configureWalk(nonceStrategy, signature);
+    _engine.setAlgorithm(algorithm);
+    log('Chaine ${activeCoin.symbol}, algorithme ${algorithm.label}.');
     try {
       await _engine.start(effectiveThreads, mode: hashMode);
     } catch (e) {
@@ -599,7 +602,9 @@ class MinerController extends ChangeNotifier {
         .padLeft(_extranonce2Size * 2, '0');
     final root = j.merkleRootFor(_extranonce1, en2);
     final header = j.headerFor(root);
-    final target = targetFromDifficulty(_activeJobDifficulty);
+    // La cible depend de l'algorithme : la difficulte 1 de Scrypt vaut
+    // 65 536 fois celle de SHA-256d.
+    final target = algorithm.targetForDifficulty(_activeJobDifficulty);
 
     job = JobSnapshot(
       jobId: j.jobId,
@@ -792,6 +797,10 @@ class MinerController extends ChangeNotifier {
 
   /// La chaine actuellement configuree.
   Coin get activeCoin => coinBySymbol(activeCoinSymbol) ?? kCoins.first;
+
+  /// L'algorithme correspondant : c'est lui qui decide de la cible de
+  /// reference et du rythme de travail du moteur.
+  MiningAlgorithm get algorithm => MiningAlgorithm.forCoin(activeCoinSymbol);
 
   /// Puissance de reference pour les estimations : celle mesuree maintenant,
   /// sinon la meilleure moyenne des sessions passees.

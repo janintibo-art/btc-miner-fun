@@ -4,6 +4,7 @@ import 'dart:typed_data';
 
 import 'bitcoin_utils.dart';
 import 'hash_mode.dart';
+import 'mining_algorithm.dart';
 import 'nonce_walker.dart';
 import 'sha256_fast.dart';
 import 'stratum_job.dart';
@@ -23,6 +24,7 @@ class MinerEngine {
   HashMode _mode = HashMode.midstate;
   NonceStrategy _strategy = NonceStrategy.signature;
   int _observeBits = 24;
+  MiningAlgorithm _algorithm = MiningAlgorithm.sha256d;
   NonceSignature _signature = NonceSignature.fromPhrase('btc-miner-fun');
 
   void Function(double hashrate, int totalHashes)? onStats;
@@ -44,6 +46,12 @@ class MinerEngine {
   void configureWalk(NonceStrategy strategy, NonceSignature signature) {
     _strategy = strategy;
     _signature = signature;
+  }
+
+  MiningAlgorithm get algorithm => _algorithm;
+
+  void setAlgorithm(MiningAlgorithm algorithm) {
+    _algorithm = algorithm;
   }
 
   Future<void> start(int workers, {HashMode mode = HashMode.midstate}) async {
@@ -102,7 +110,8 @@ class MinerEngine {
     try {
       for (var i = 0; i < _workerCount; i++) {
         _isolates.add(
-            await Isolate.spawn(_minerEntryPoint, [rx.sendPort, i, _mode.index]));
+            await Isolate.spawn(
+              _minerEntryPoint, [rx.sendPort, i, _mode.index, _algorithm.index]));
       }
       await ready.future.timeout(const Duration(seconds: 15));
     } catch (_) {
@@ -176,7 +185,11 @@ void _minerEntryPoint(List<dynamic> args) {
   final mainPort = args[0] as SendPort;
   final index = args[1] as int;
   final mode = HashMode.values[args[2] as int];
+  final algorithm = MiningAlgorithm.values[args[3] as int];
   final fast = Sha256Fast();
+  // Scrypt alloue 128 kio par isolate : une seule fois, a la creation.
+  final runner = AlgorithmRunner(algorithm);
+  final batchSize = algorithm.batchSize;
 
   final rx = ReceivePort();
   mainPort.send({'type': 'hello', 'index': index, 'port': rx.sendPort});
@@ -212,8 +225,33 @@ void _minerEntryPoint(List<dynamic> args) {
       }
 
       final batchStart = DateTime.now().microsecondsSinceEpoch;
-      for (var i = 0; i < 1000; i++) {
+      for (var i = 0; i < batchSize; i++) {
         Uint8List? hash;
+
+        if (algorithm != MiningAlgorithm.sha256d) {
+          // Les autres algorithmes n'ont pas de midstate ni de rejet precoce :
+          // le hachage est calcule entierement, puis compare a la cible.
+          h[76] = nonce & 0xff;
+          h[77] = (nonce >> 8) & 0xff;
+          h[78] = (nonce >> 16) & 0xff;
+          h[79] = (nonce >> 24) & 0xff;
+          final candidate = Uint8List.fromList(runner.hash(h));
+          if (hashMeetsTarget(candidate, t)) hash = candidate;
+          totalHashes++;
+          if (hash != null) {
+            mainPort.send({
+              'type': 'share',
+              'index': index,
+              'jobId': jobId,
+              'extranonce2': extranonce2,
+              'ntime': nTime,
+              'nonce': nonce,
+              'hash': hash,
+            });
+          }
+          nonce = walker?.next() ?? ((nonce + stride) & 0xFFFFFFFF);
+          continue;
+        }
 
         switch (mode) {
           case HashMode.midstate:

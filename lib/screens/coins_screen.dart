@@ -5,6 +5,7 @@ import '../app_theme.dart';
 import '../core/bitcoin_utils.dart';
 import '../core/coin_stats.dart';
 import '../core/coins.dart';
+import '../core/mining_algorithm.dart';
 import '../state/miner_controller.dart';
 import '../widgets/app_card.dart';
 
@@ -319,6 +320,44 @@ class _CoinTile extends StatelessWidget {
                   ],
                 ),
               ),
+              if (coin.isMinableHere && coin.pool != null) ...[
+                const SizedBox(height: 12),
+                Builder(builder: (context) {
+                  final m = context.watch<MinerController>();
+                  final active = m.activeCoinSymbol == coin.symbol;
+                  return SizedBox(
+                    width: double.infinity,
+                    child: OutlinedButton.icon(
+                      onPressed: active || m.isActive
+                          ? null
+                          : () => m.setActiveCoin(coin),
+                      style: OutlinedButton.styleFrom(
+                        foregroundColor: AppColors.mint,
+                        side: const BorderSide(color: AppColors.line),
+                        padding: const EdgeInsets.symmetric(vertical: 12),
+                      ),
+                      icon: Icon(
+                          active
+                              ? Icons.check_circle_rounded
+                              : Icons.swap_horiz_rounded,
+                          size: 17),
+                      label: Text(active
+                          ? 'Chaine active'
+                          : 'Miner cette chaine (${MiningAlgorithm.forCoin(coin.symbol).label})'),
+                    ),
+                  );
+                }),
+                Padding(
+                  padding: const EdgeInsets.only(top: 8),
+                  child: Text(
+                    'Le pool et l\'algorithme sont configures automatiquement. '
+                    'Pense a renseigner une adresse de cette chaine dans les '
+                    'reglages : une adresse Bitcoin ne fonctionnera pas '
+                    'ailleurs.',
+                    style: mono(size: 10, color: AppColors.dim),
+                  ),
+                ),
+              ],
             ],
           ],
         ),

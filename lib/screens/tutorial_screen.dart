@@ -305,6 +305,28 @@ const _chapters = <_ChapterData>[
     Icons.currency_bitcoin_rounded,
   ),
   _ChapterData(
+    'Deux algorithmes, neuf chaines',
+    'Le moteur sait maintenant calculer deux familles de preuve de travail.\n\n'
+        'SHA-256d, celui de Bitcoin : rapide, sans besoin de memoire. Il '
+        'couvre Bitcoin, Bitcoin Cash, Bitcoin SV, eCash, DigiByte, Namecoin '
+        'et Peercoin.\n\n'
+        'Scrypt, celui de Litecoin et Dogecoin : chaque hachage remplit et '
+        'relit 128 kio de memoire, ce qui le rend environ mille fois plus lent. '
+        'Ne t\'etonne pas de passer de centaines de milliers de hachages par '
+        'seconde a quelques centaines : c\'est normal, et c\'etait le but de '
+        'ses concepteurs en 2011, rendre les machines dediees inutiles. Elles '
+        'sont arrivees en 2014.\n\n'
+        'Un detail invisible mais essentiel : la difficulte 1 n\'a pas la meme '
+        'valeur partout. Chez Scrypt, la cible de reference est 65 536 fois '
+        'plus facile. Le moteur en tient compte automatiquement, sinon toutes '
+        'les parts seraient refusees.\n\n'
+        'Choisis la chaine dans l\'onglet Monnaies : le pool et l\'algorithme '
+        'se configurent seuls. Il ne reste qu\'a saisir une adresse de cette '
+        'chaine - une adresse Bitcoin ne fonctionne nulle part ailleurs, et '
+        'l\'application le verifie.',
+    Icons.functions_rounded,
+  ),
+  _ChapterData(
     'Compiler l\'APK et le .exe',
     'Le projet est compile par GitHub Actions, pas par ton telephone. A chaque '
         'envoi de code sur la branche main, GitHub construit :\n\n'

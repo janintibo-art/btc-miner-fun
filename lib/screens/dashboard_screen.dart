@@ -604,6 +604,10 @@ class _StatsGrid extends StatelessWidget {
       _StatData('Travaux recus', m.jobsReceived.toString(), Icons.inventory_2_rounded, AppColors.cyan),
       _StatData('Coeurs actifs', '${m.effectiveThreads} / ${m.availableCores}', Icons.memory_rounded, AppColors.amber),
       _StatData('Parts en attente', m.pendingShares.toString(), Icons.hourglass_bottom_rounded, AppColors.violet),
+      _StatData('Chaine', m.activeCoinSymbol, Icons.link_rounded,
+          AppColors.mint),
+      _StatData('Algorithme', m.algorithm.label, Icons.functions_rounded,
+          AppColors.violet),
       _StatData('Moteur', m.hashMode.label, Icons.speed_rounded, AppColors.cyan),
       _StatData('Marche', m.nonceStrategy.label, Icons.route_rounded, AppColors.mint),
       _StatData(

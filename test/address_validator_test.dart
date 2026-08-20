@@ -1,4 +1,5 @@
 import 'package:btc_miner_fun/core/address_validator.dart';
+import 'package:btc_miner_fun/core/coins.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 /// Vecteurs issus des specifications BIP 173 et BIP 350, plus des adresses
@@ -46,6 +47,48 @@ void main() {
     test('les caracteres ambigus sont refusés avec une explication', () {
       final r = checkBitcoinAddress('1A1zP1eP5QGefi2DMPTfTL5SLmv7DivfNO');
       expect(r.valid, isFalse);
+    });
+  });
+
+  group('Autres chaines', () {
+    Coin coin(String symbol) => coinBySymbol(symbol)!;
+
+    // Adresses construites depuis leur octet de version et verifiees : le
+    // code de controle est calcule, pas suppose.
+    test('une adresse Litecoin est acceptee pour Litecoin', () {
+      final r = checkCoinAddress('LKDyUEtTR1HXamkiEphisSiBJu6o3ZPE34', coin('LTC'));
+      expect(r.valid, isTrue, reason: r.message);
+      expect(r.type, contains('Litecoin'));
+    });
+
+    test('une adresse Dogecoin est acceptee pour Dogecoin', () {
+      final r = checkCoinAddress('D597kHXGdkwkryF9oGhz9Bp1ypTpD1u99Z', coin('DOGE'));
+      expect(r.valid, isTrue, reason: r.message);
+    });
+
+    test('une adresse Litecoin est refusee pour Dogecoin', () {
+      final r = checkCoinAddress('LKDyUEtTR1HXamkiEphisSiBJu6o3ZPE34', coin('DOGE'));
+      expect(r.valid, isFalse);
+    });
+
+    test('une adresse Bitcoin est refusee pour Litecoin', () {
+      final r = checkCoinAddress(
+          '1A1zP1eP5QGefi2DMPTfTL5SLmv7DivfNa', coin('LTC'));
+      expect(r.valid, isFalse);
+      expect(r.message, contains('Litecoin'));
+    });
+
+    test('une faute de frappe reste detectee sur les autres chaines', () {
+      final r = checkCoinAddress('LKDyUEtTR1HXamkiEphisSiBJu6o3ZPE3A', coin('LTC'));
+      expect(r.valid, isFalse);
+      expect(r.message, contains('controle'));
+    });
+
+    test('Bitcoin garde son comportement detaille', () {
+      final r = checkCoinAddress(
+          'bc1qw508d6qejxtdg4y5r3zarvary0c5xw7kv8f3t4', coin('BTC'));
+      expect(r.valid, isTrue);
+      expect(r.type, contains('SegWit'));
     });
   });
 

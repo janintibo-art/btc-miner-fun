@@ -1,6 +1,7 @@
 import 'dart:typed_data';
 
 import 'bitcoin_utils.dart';
+import 'coins.dart';
 
 /// Le verdict d'une verification d'adresse.
 class AddressCheck {
@@ -30,6 +31,36 @@ class AddressCheck {
 
 /// Verifie une adresse Bitcoin pour de bon : le checksum est recalcule, pas
 /// seulement le prefixe. Une seule lettre changee est detectee.
+/// Verifie une adresse pour une chaine donnee.
+///
+/// Les regles changent d'une chaine a l'autre - prefixe des adresses
+/// modernes, octets de version des adresses historiques - mais le code de
+/// controle se calcule partout de la meme facon.
+AddressCheck checkCoinAddress(String raw, Coin coin) {
+  final rules = coin.addressRules;
+  if (rules == null) return checkBitcoinAddress(raw);
+
+  final address = raw.trim();
+  if (address.isEmpty) return AddressCheck.empty;
+  if (address.contains(' ')) {
+    return const AddressCheck(
+      valid: false,
+      message: 'L\'adresse ne doit contenir aucun espace.',
+    );
+  }
+
+  final hrp = rules.bech32Hrp;
+  final lower = address.toLowerCase();
+  if (hrp != null && lower.startsWith('${hrp}1')) {
+    return _checkBech32(address, expectedHrp: hrp, chainName: coin.name);
+  }
+  if (rules.base58Versions.isNotEmpty) {
+    return _checkBase58(address,
+        versions: rules.base58Versions, chainName: coin.name);
+  }
+  return checkBitcoinAddress(address);
+}
+
 AddressCheck checkBitcoinAddress(String raw) {
   final address = raw.trim();
   if (address.isEmpty) return AddressCheck.empty;
@@ -99,7 +130,8 @@ List<int> _hrpExpand(String hrp) {
   return out;
 }
 
-AddressCheck _checkBech32(String address) {
+AddressCheck _checkBech32(String address, {String expectedHrp = 'bc',
+    String chainName = 'Bitcoin'}) {
   final hasUpper = address != address.toLowerCase();
   final hasLower = address != address.toUpperCase();
   if (hasUpper && hasLower) {
@@ -145,13 +177,13 @@ AddressCheck _checkBech32(String address) {
     );
   }
 
-  if (hrp != 'bc') {
+  if (hrp != expectedHrp) {
     return AddressCheck(
       valid: false,
       message: hrp == 'tb' || hrp == 'bcrt'
-          ? 'Cette adresse appartient au reseau de test, pas au vrai Bitcoin. '
+          ? 'Cette adresse appartient au reseau de test, pas au vrai reseau. '
               'Les gains y seraient sans valeur.'
-          : 'Cette adresse n\'appartient pas au reseau Bitcoin.',
+          : 'Cette adresse n\'appartient pas au reseau $chainName.',
     );
   }
 
@@ -273,7 +305,9 @@ List<int>? _convertBits(List<int> data, int from, int to, bool pad) {
 const String _b58 =
     '123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz';
 
-AddressCheck _checkBase58(String address) {
+AddressCheck _checkBase58(String address,
+    {List<int> versions = const <int>[0x00, 0x05],
+    String chainName = 'Bitcoin'}) {
   if (address.length < 26 || address.length > 35) {
     return const AddressCheck(
       valid: false,
@@ -338,6 +372,23 @@ AddressCheck _checkBase58(String address) {
             'frappe quelque part dans l\'adresse.',
       );
     }
+  }
+
+  // Chaine autre que Bitcoin : seuls les octets de version different.
+  if (versions.length != 2 || versions[0] != 0x00 || versions[1] != 0x05) {
+    if (versions.contains(body[0])) {
+      return AddressCheck(
+        valid: true,
+        message: 'Adresse valide.',
+        type: 'Adresse $chainName',
+        detail: 'Code de controle verifie.',
+      );
+    }
+    return AddressCheck(
+      valid: false,
+      message: 'Le code de controle est bon, mais cette adresse n\'appartient '
+          'pas au reseau $chainName.',
+    );
   }
 
   switch (body[0]) {
