@@ -252,7 +252,10 @@ function hashDuBloc(bloc) {
   return bloc.hash || '—';
 }
 
-fetch('chain.json?v=' + Date.now())
+fetch('config.json?v=' + Date.now())
+  .then(r => r.json())
+  .then(c => fetch((c.serveur || '').replace(/\/$/, '') + '/chain'))
+  .catch(() => fetch('chain.json?v=' + Date.now()))
   .then(r => { if (!r.ok) throw new Error('absent'); return r.json(); })
   .then(data => {
     const regles = data.rules || {};
