@@ -1,0 +1,21 @@
+name: Generer la cle de signature
+
+on:
+  workflow_dispatch:
+
+jobs:
+  generer:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Creer la cle et l'afficher en base64
+        run: |
+          keytool -genkeypair -v -keystore cle-tibo.jks -storetype PKCS12 \
+            -keyalg RSA -keysize 2048 -validity 10000 -alias tibo \
+            -storepass "${{ github.run_id }}" -keypass "${{ github.run_id }}" \
+            -dname "CN=Tibo, OU=Perso, O=Perso, L=Ville, S=Region, C=FR"
+          echo "=============== MOT DE PASSE ==============="
+          echo "${{ github.run_id }}"
+          echo "=============== CLE BASE64 ================="
+          base64 -w 0 cle-tibo.jks
+          echo ""
+          echo "==========================================="
