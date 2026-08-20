@@ -74,6 +74,12 @@ regenere a chaque compilation avec `flutter create`.
 Sur Android, autorise l'installation depuis une source inconnue pour ton
 gestionnaire de fichiers.
 
+## Signature de l'APK
+
+Sans cle, chaque compilation produit une signature differente et Android exige
+une desinstallation avant chaque mise a jour. Voir `docs/SIGNATURE.md` pour
+declarer une cle stable en quatre secrets - dix minutes, une seule fois.
+
 ## Le serveur
 
 Le dossier `server/` contient un coordinateur Node.js sans dependance, pour

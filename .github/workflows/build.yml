@@ -82,11 +82,53 @@ jobs:
       - name: Patcher le manifeste Android
         run: python3 tool/patch_android.py
 
+      # La cle de signature vient des secrets du depot, jamais du code.
+      # Sans elle, la compilation continue avec la signature de debogage :
+      # le projet reste utilisable par quiconque clone le depot.
+      - name: Installer la cle de signature
+        env:
+          KEYSTORE_BASE64: ${{ secrets.KEYSTORE_BASE64 }}
+          KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
+          KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
+          STORE_PASSWORD: ${{ secrets.STORE_PASSWORD }}
+        run: |
+          if [ -z "$KEYSTORE_BASE64" ]; then
+            echo "Aucune cle configuree : signature de debogage."
+            echo "Les mises a jour demanderont une desinstallation prealable."
+            exit 0
+          fi
+          echo "$KEYSTORE_BASE64" | base64 -d > android/app/cle.jks
+          taille=$(stat -c%s android/app/cle.jks)
+          if [ "$taille" -lt 500 ]; then
+            echo "La cle decodee fait $taille octets : secret invalide."
+            exit 1
+          fi
+          cat > android/key.properties <<PROPS
+          storeFile=cle.jks
+          storePassword=$STORE_PASSWORD
+          keyPassword=$KEY_PASSWORD
+          keyAlias=$KEY_ALIAS
+          PROPS
+          sed -i 's/^          //' android/key.properties
+          echo "Cle installee ($taille octets)."
+
       - name: Construire les APK par architecture
         run: flutter build apk --release --split-per-abi
 
       - name: Construire l'APK universel (filet de securite)
         run: flutter build apk --release
+
+      # Trace utile dans le journal : on saura toujours comment un APK a ete
+      # signe, sans avoir a l'inspecter.
+      - name: Nature de la signature
+        run: |
+          if [ -f android/key.properties ]; then
+            echo "APK signes avec la cle de publication : les mises a jour"
+            echo "s'installeront par-dessus les versions precedentes."
+          else
+            echo "APK signes en debogage : desinstallation necessaire avant"
+            echo "chaque mise a jour."
+          fi
 
       - name: Rassembler les APK
         run: |

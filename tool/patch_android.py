@@ -437,6 +437,66 @@ else:
     print("Attention : build.gradle Android introuvable, SDK non verifie.")
 
 # --------------------------------------------------------------------------
+# 5 bis. Signature de l'APK.
+#
+#     Sans cle, Gradle signe avec une cle de debogage regeneree a chaque
+#     compilation : deux APK successifs ont donc des signatures differentes, et
+#     Android refuse la mise a jour. Il faut desinstaller a chaque fois, en
+#     perdant les donnees.
+#
+#     Avec une cle stable, les mises a jour s'installent par-dessus.
+#     La cle n'est jamais dans le depot : elle arrive par les secrets de la
+#     forge, et le fichier key.properties est ecrit juste avant la
+#     compilation. En son absence, on retombe sur la signature de debogage
+#     pour que le projet reste compilable par n'importe qui.
+# --------------------------------------------------------------------------
+if gradle_kts.exists():
+    gradle = gradle_kts.read_text(encoding="utf-8")
+
+    if "keystoreProperties" not in gradle:
+        entete = '''import java.util.Properties
+import java.io.FileInputStream
+
+// Cle de signature, fournie hors du depot. Absente : signature de debogage.
+val keystoreProperties = Properties()
+val keystorePropertiesFile = rootProject.file("key.properties")
+if (keystorePropertiesFile.exists()) {
+    keystoreProperties.load(FileInputStream(keystorePropertiesFile))
+}
+
+'''
+        gradle = entete + gradle
+
+        signature = '''
+    signingConfigs {
+        create("release") {
+            if (keystorePropertiesFile.exists()) {
+                keyAlias = keystoreProperties["keyAlias"] as String
+                keyPassword = keystoreProperties["keyPassword"] as String
+                storeFile = file(keystoreProperties["storeFile"] as String)
+                storePassword = keystoreProperties["storePassword"] as String
+            }
+        }
+    }
+
+    defaultConfig {'''
+        gradle = gradle.replace("    defaultConfig {", signature, 1)
+
+        gradle, remplacements = re.subn(
+            r'signingConfig\s*=\s*signingConfigs\.getByName\("debug"\)',
+            'signingConfig = if (keystorePropertiesFile.exists()) '
+            'signingConfigs.getByName("release") else '
+            'signingConfigs.getByName("debug")',
+            gradle,
+            count=1,
+        )
+        gradle_kts.write_text(gradle, encoding="utf-8")
+        print("Signature : configuration ajoutee ({0} remplacement).".format(
+            remplacements))
+    else:
+        print("Signature : deja configuree.")
+
+# --------------------------------------------------------------------------
 # 6. Silence l'avertissement bloquant du plugin Gradle sur compileSdk 37.
 # --------------------------------------------------------------------------
 properties = pathlib.Path("android/gradle.properties")
