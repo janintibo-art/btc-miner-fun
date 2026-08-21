@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'my_chain.dart';
+import 'tibo_tx.dart';
 
 /// Etat de la chaine tel que le serveur le voit.
 class RemoteHead {
@@ -113,6 +114,37 @@ class ChainNetwork {
       );
     } catch (e) {
       return SubmitResult(accepted: false, message: 'serveur injoignable : $e');
+    }
+  }
+
+  /// Depose un virement dans la file du serveur.
+  Future<SubmitResult> submitTx(TiboTx tx) async {
+    try {
+      final donnees = await _appel('/tx', methode: 'POST', corps: tx.toJson());
+      if (donnees is! Map) {
+        return const SubmitResult(accepted: false, message: 'reponse inattendue');
+      }
+      return SubmitResult(
+        accepted: donnees['accepted'] == true,
+        message: donnees['reason']?.toString() ?? 'virement accepte',
+      );
+    } catch (e) {
+      return SubmitResult(accepted: false, message: 'serveur injoignable : $e');
+    }
+  }
+
+  /// Les virements en attente d'etre inclus dans un bloc.
+  Future<List<TiboTx>> pendingTx() async {
+    try {
+      final donnees = await _appel('/pending');
+      if (donnees is! Map) return const <TiboTx>[];
+      final liste = donnees['tx'];
+      if (liste is! List) return const <TiboTx>[];
+      return liste
+          .map((t) => TiboTx.fromJson(t as Map<String, dynamic>))
+          .toList();
+    } catch (_) {
+      return const <TiboTx>[];
     }
   }
 

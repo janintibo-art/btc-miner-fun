@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'dart:typed_data';
 
 import 'bitcoin_utils.dart';
+import 'tibo_tx.dart';
 
 /// Une chaine personnelle, avec le meme mecanisme que Bitcoin.
 ///
@@ -81,6 +82,8 @@ class MyBlock {
     required this.message,
     required this.reward,
     required this.hashesTried,
+    this.miner = '',
+    this.transactions = const <TiboTx>[],
   });
 
   final int height;
@@ -104,6 +107,13 @@ class MyBlock {
 
   /// Nombre de tentatives qu'il a fallu pour trouver ce bloc.
   final int hashesTried;
+
+  /// Adresse creditee de la recompense. Vide sur les chaines d'avant la
+  /// version 43 : leurs blocs restent valides, ils ne paient personne.
+  final String miner;
+
+  /// Les virements inclus dans ce bloc.
+  final List<TiboTx> transactions;
 
   DateTime get dateTime => DateTime.fromMillisecondsSinceEpoch(time * 1000);
 
@@ -140,6 +150,9 @@ class MyBlock {
         'msg': message,
         'r': reward,
         'x': hashesTried,
+        if (miner.isNotEmpty) 'mineur': miner,
+        if (transactions.isNotEmpty)
+          'tx': transactions.map((t) => t.toJson()).toList(),
       };
 
   factory MyBlock.fromJson(Map<String, dynamic> j) => MyBlock(
@@ -153,6 +166,11 @@ class MyBlock {
         message: j['msg'] as String? ?? '',
         reward: (j['r'] as num).toDouble(),
         hashesTried: j['x'] as int? ?? 0,
+        miner: j['mineur'] as String? ?? '',
+        transactions: (j['tx'] as List?)
+                ?.map((t) => TiboTx.fromJson(t as Map<String, dynamic>))
+                .toList() ??
+            const <TiboTx>[],
       );
 }
 
@@ -284,9 +302,19 @@ class MyChain {
 
   /// Prepare le bloc suivant, sans nonce valable : c'est le minage qui le
   /// trouvera.
-  MyBlock prepareNext(DateTime now, String message) {
+  MyBlock prepareNext(
+    DateTime now,
+    String message, {
+    String miner = '',
+    List<TiboTx> transactions = const <TiboTx>[],
+  }) {
     final last = tip!;
-    final payload = '${last.hash}|$message|${last.height + 1}';
+    // Le mineur et les virements entrent dans la racine de Merkle, donc dans
+    // l'en-tete, donc dans la preuve de travail. Les modifier apres coup
+    // invaliderait le bloc : c'est exactement ce qu'on veut.
+    final resume = transactions.map((t) => t.signedMessage).join(';');
+    final payload =
+        '${last.hash}|$message|${last.height + 1}|$miner|$resume';
     return MyBlock(
       height: last.height + 1,
       version: 1,
@@ -298,7 +326,25 @@ class MyChain {
       message: message,
       reward: rules.rewardAt(last.height + 1),
       hashesTried: 0,
+      miner: miner,
+      transactions: transactions,
     );
+  }
+
+  /// Rejoue la chaine pour obtenir les soldes.
+  ///
+  /// Rien n'est mis en cache : le solde affiche decoule toujours des blocs
+  /// eux-memes. Sur une chaine de quelques milliers de blocs, c'est
+  /// instantane.
+  TiboState replay() {
+    final etat = TiboState();
+    for (final bloc in blocks) {
+      if (bloc.miner.isNotEmpty) etat.credit(bloc.miner, bloc.reward);
+      for (final tx in bloc.transactions) {
+        etat.apply(tx);
+      }
+    }
+    return etat;
   }
 
   /// Verifie la chaine entiere : chainage, hauteurs, horodatages, et surtout

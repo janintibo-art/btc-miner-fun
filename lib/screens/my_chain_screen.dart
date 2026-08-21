@@ -9,6 +9,7 @@ import '../core/bitcoin_utils.dart';
 import '../core/miner_ranking.dart';
 import '../core/my_chain.dart';
 import '../core/session_export.dart';
+import '../core/wallet_vault.dart';
 import '../state/chain_controller.dart';
 import '../widgets/app_card.dart';
 import 'certificate_screen.dart';
@@ -28,7 +29,11 @@ class _MyChainScreenState extends State<MyChainScreen> {
   final _genesis = TextEditingController(text: 'Le premier bloc de ma monnaie');
   final _message = TextEditingController(text: 'Mine par moi');
   final _serveur = TextEditingController();
+  final _destinataire = TextEditingController();
+  final _montant = TextEditingController();
+  final _noteVirement = TextEditingController();
   bool _serveurCharge = false;
+  String _messageVirement = '';
   int _difficultyLevel = 2;
 
   @override
@@ -38,6 +43,9 @@ class _MyChainScreenState extends State<MyChainScreen> {
     _genesis.dispose();
     _message.dispose();
     _serveur.dispose();
+    _destinataire.dispose();
+    _montant.dispose();
+    _noteVirement.dispose();
     super.dispose();
   }
 
@@ -447,6 +455,14 @@ class _MyChainScreenState extends State<MyChainScreen> {
                       ),
             )),
         const SizedBox(height: 16),
+        _CarteVirements(
+          destinataire: _destinataire,
+          montant: _montant,
+          note: _noteVirement,
+          message: _messageVirement,
+          onEnvoyer: (message) => setState(() => _messageVirement = message),
+        ),
+        const SizedBox(height: 16),
         AppCard(
           accent: c.isShared ? AppColors.mint.withOpacity(.35) : null,
           child: Column(
@@ -821,6 +837,233 @@ class _Championnat extends StatelessWidget {
                   ),
                 ),
               ],
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+/// Envoyer et recevoir des Tibo.
+///
+/// L'adresse est derivee de la phrase du portefeuille : la meme phrase
+/// redonne toujours la meme adresse, sur n'importe quel appareil. Il n'y a
+/// donc rien de plus a sauvegarder que ce qui l'est deja.
+class _CarteVirements extends StatefulWidget {
+  const _CarteVirements({
+    required this.destinataire,
+    required this.montant,
+    required this.note,
+    required this.message,
+    required this.onEnvoyer,
+  });
+
+  final TextEditingController destinataire;
+  final TextEditingController montant;
+  final TextEditingController note;
+  final String message;
+  final ValueChanged<String> onEnvoyer;
+
+  @override
+  State<_CarteVirements> createState() => _CarteVirementsState();
+}
+
+class _CarteVirementsState extends State<_CarteVirements> {
+  static const _coffre = WalletVault();
+  bool _envoi = false;
+  bool _derivation = false;
+
+  /// Lit la phrase dans le coffre chiffre, le temps de deriver l'adresse.
+  ///
+  /// La phrase n'est jamais conservee : elle sert une fois, puis la reference
+  /// est abandonnee.
+  Future<void> _deriver(ChainController c) async {
+    setState(() => _derivation = true);
+    final phrase = await _coffre.revealMnemonic();
+    if (!mounted) return;
+    setState(() => _derivation = false);
+    if (phrase == null || phrase.isEmpty) {
+      widget.onEnvoyer('Aucun portefeuille : cree-le dans l\'onglet dedie.');
+      return;
+    }
+    c.unlockIdentity(phrase);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.watch<ChainController>();
+    final identite = c.identity;
+
+    return AppCard(
+      accent: AppColors.cyan.withOpacity(.3),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text('TES TIBO', style: label()),
+          const SizedBox(height: 10),
+          if (identite == null) ...[
+            const Text(
+              'Pour recevoir des Tibo, il faut une adresse. Elle se derive de '
+              'la phrase de recuperation de ton portefeuille : la meme phrase '
+              'redonne toujours la meme adresse, sur n\'importe quel appareil. '
+              'Rien de plus a sauvegarder.',
+              style: TextStyle(
+                  fontSize: 12.5, height: 1.5, color: AppColors.muted),
+            ),
+            const SizedBox(height: 14),
+            SizedBox(
+              width: double.infinity,
+              child: FilledButton.icon(
+                onPressed: _derivation ? null : () => _deriver(c),
+                style: FilledButton.styleFrom(
+                  backgroundColor: AppColors.cyan,
+                  foregroundColor: Colors.black,
+                  padding: const EdgeInsets.symmetric(vertical: 13),
+                ),
+                icon: _derivation
+                    ? const SizedBox(
+                        width: 15,
+                        height: 15,
+                        child: CircularProgressIndicator(
+                            strokeWidth: 2, color: Colors.black),
+                      )
+                    : const Icon(Icons.key_rounded, size: 18),
+                label: Text(_derivation
+                    ? 'Derivation...'
+                    : 'Deriver mon adresse Tibo'),
+              ),
+            ),
+          ] else ...[
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.end,
+              children: [
+                Text(c.balanceOf(identite.address).toStringAsFixed(2),
+                    style:
+                        mono(size: 26, weight: FontWeight.w800, spacing: -1)),
+                const SizedBox(width: 7),
+                Padding(
+                  padding: const EdgeInsets.only(bottom: 4),
+                  child: Text('TIBO recus',
+                      style: mono(size: 11, color: AppColors.cyan)),
+                ),
+              ],
+            ),
+            const SizedBox(height: 12),
+            Text('TON ADRESSE', style: label()),
+            const SizedBox(height: 4),
+            InkWell(
+              onTap: () {
+                Clipboard.setData(ClipboardData(text: identite.address));
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('Adresse copiee')),
+                );
+              },
+              child: Row(
+                children: [
+                  Expanded(
+                    child: Text(identite.address,
+                        style: mono(size: 11, color: AppColors.mint)),
+                  ),
+                  const Icon(Icons.copy_rounded,
+                      size: 15, color: AppColors.muted),
+                ],
+              ),
+            ),
+            const Divider(height: 26),
+            Text('ENVOYER', style: label()),
+            const SizedBox(height: 10),
+            TextField(
+              controller: widget.destinataire,
+              style: mono(size: 11.5),
+              decoration: const InputDecoration(
+                labelText: 'Adresse du destinataire',
+                hintText: 'T...',
+              ),
+            ),
+            const SizedBox(height: 12),
+            Row(
+              children: [
+                Expanded(
+                  child: TextField(
+                    controller: widget.montant,
+                    keyboardType:
+                        const TextInputType.numberWithOptions(decimal: true),
+                    style: mono(size: 13),
+                    decoration: const InputDecoration(
+                        labelText: 'Montant', suffixText: 'TIBO'),
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  flex: 2,
+                  child: TextField(
+                    controller: widget.note,
+                    decoration: const InputDecoration(labelText: 'Note'),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 12),
+            SizedBox(
+              width: double.infinity,
+              child: FilledButton.icon(
+                onPressed: _envoi || c.mining
+                    ? null
+                    : () async {
+                        setState(() => _envoi = true);
+                        final montant = double.tryParse(
+                                widget.montant.text.replaceAll(',', '.')) ??
+                            0;
+                        final erreur = await c.send(
+                          widget.destinataire.text.trim(),
+                          montant,
+                          widget.note.text.trim(),
+                        );
+                        if (!mounted) return;
+                        setState(() => _envoi = false);
+                        widget.onEnvoyer(erreur.isEmpty
+                            ? 'Virement depose : il partira dans le prochain '
+                                'bloc mine.'
+                            : erreur);
+                        if (erreur.isEmpty) {
+                          widget.montant.clear();
+                          widget.note.clear();
+                        }
+                      },
+                style: FilledButton.styleFrom(
+                  backgroundColor: AppColors.cyan,
+                  foregroundColor: Colors.black,
+                  padding: const EdgeInsets.symmetric(vertical: 13),
+                ),
+                icon: _envoi
+                    ? const SizedBox(
+                        width: 15,
+                        height: 15,
+                        child: CircularProgressIndicator(
+                            strokeWidth: 2, color: Colors.black),
+                      )
+                    : const Icon(Icons.send_rounded, size: 17),
+                label: Text(_envoi ? 'Envoi...' : 'Signer et envoyer'),
+              ),
+            ),
+            if (widget.message.isNotEmpty) ...[
+              const SizedBox(height: 10),
+              Text(widget.message,
+                  style: mono(
+                    size: 11,
+                    color: widget.message.startsWith('Virement depose')
+                        ? AppColors.mint
+                        : AppColors.coral,
+                  )),
+            ],
+            const SizedBox(height: 10),
+            Text(
+              'Le virement est signe ici avec ta cle privee, qui ne quitte '
+              'jamais l\'appareil. Le serveur verifie la signature, puis un '
+              'mineur l\'inscrit dans un bloc - c\'est a ce moment qu\'il '
+              'devient definitif.',
+              style: mono(size: 10, color: AppColors.dim),
             ),
           ],
         ],

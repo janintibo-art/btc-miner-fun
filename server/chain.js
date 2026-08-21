@@ -7,6 +7,7 @@
 // difficulte. Si les deux divergeaient, les blocs mines seraient refuses.
 
 const crypto = require('crypto');
+const { formeValide, adresseValide } = require('./tibo_tx.js');
 
 const GENESIS_PREV = '0'.repeat(64);
 
@@ -79,10 +80,36 @@ function hasValidShape(block) {
   if (typeof block.p !== 'string' || !/^[0-9a-f]{64}$/.test(block.p)) return false;
   if (typeof block.m !== 'string' || !/^[0-9a-f]{64}$/.test(block.m)) return false;
   if (typeof block.r !== 'number' || !isFinite(block.r) || block.r < 0) return false;
+  if (block.n > 0xffffffff || block.b > 0xffffffff || block.v > 0xffffffff) {
+    return false;
+  }
   const limite = block.h === 0 ? MAX_MSG_GENESE : MAX_MSG;
   if (typeof block.msg !== 'string' || block.msg.length > limite) return false;
-  if (block.n > 0xffffffff || block.b > 0xffffffff || block.v > 0xffffffff) return false;
+
+  // Le mineur, s'il est declare, doit etre une adresse Tibo valable.
+  if (block.mineur !== undefined) {
+    if (typeof block.mineur !== 'string') return false;
+    if (block.mineur.length > 0 && !adresseValide(block.mineur)) return false;
+  }
+
+  // Les virements, s'il y en a. Leur signature est verifiee plus tard, au
+  // rejeu : ici on ne controle que la forme.
+  if (block.tx !== undefined) {
+    if (!Array.isArray(block.tx) || block.tx.length > 100) return false;
+    for (const tx of block.tx) {
+      if (!formeValide(tx)) return false;
+    }
+  }
   return true;
+}
+
+/// Reconstitue le texte engage dans la racine de Merkle. Il doit correspondre
+/// au caractere pres a celui construit par l'application.
+function contenuMerkle(precedent, block) {
+  const resume = (block.tx || [])
+    .map((t) => `TIBO|${t.f}|${t.t}|${Number(t.a).toFixed(8)}|${t.s}|${t.n || ''}`)
+    .join(';');
+  return `${blockHash(precedent)}|${block.msg}|${block.h}|${block.mineur || ''}|${resume}`;
 }
 
 /// Verifie une chaine entiere. Retourne { valid, height, problem }.
@@ -123,6 +150,19 @@ function verifyChain(blocks, rules) {
     if (Math.abs(block.r - recompense) > 1e-9) {
       return { valid: false, height: i, problem: `le bloc ${i} s'attribue une recompense non conforme` };
     }
+    // La racine de Merkle engage le mineur et les virements. La verifier,
+    // c'est s'assurer qu'aucun virement n'a ete ajoute ou retire apres que la
+    // preuve de travail a ete fournie.
+    const attendueMerkle = sha256d(Buffer.from(contenuMerkle(previous, block), 'utf8'))
+      .toString('hex');
+    if (block.m !== attendueMerkle) {
+      return {
+        valid: false,
+        height: i,
+        problem: `le bloc ${i} : le contenu ne correspond pas a son empreinte`,
+      };
+    }
+
     if (!meetsTarget(block)) {
       return { valid: false, height: i, problem: `le bloc ${i} n'apporte pas sa preuve de travail` };
     }
@@ -201,6 +241,7 @@ function totalWork(blocks) {
 
 module.exports = {
   GENESIS_PREV,
+  contenuMerkle,
   expectedBits,
   expectedReward,
   bitsFromTarget,

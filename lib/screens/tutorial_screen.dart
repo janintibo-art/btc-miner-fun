@@ -482,6 +482,32 @@ const _chapters = <_ChapterData>[
     Icons.storefront_rounded,
   ),
   _ChapterData(
+    'Envoyer des Tibo',
+    'Le Tibo se transfere desormais vraiment. Chaque personne a une adresse, '
+        'commencant par T, derivee de la phrase de recuperation de son '
+        'portefeuille : la meme phrase redonne toujours la meme adresse, sur '
+        'n\'importe quel appareil. Il n\'y a donc rien de plus a sauvegarder.\n\n'
+        'Un virement est un texte signe : « de A vers B, tel montant, tel '
+        'numero d\'ordre ». La signature se fait sur l\'appareil, avec la cle '
+        'privee qui ne le quitte jamais. Le serveur verifie trois choses avant '
+        'd\'accepter : que la signature est valable, que la cle publique '
+        'correspond bien a l\'adresse emettrice, et que le solde suffit.\n\n'
+        'Ce dernier point compte : sans lui, n\'importe qui pourrait signer '
+        'avec sa propre cle en pretendant depenser l\'argent d\'un autre.\n\n'
+        'Le numero d\'ordre empeche le rejeu. Sans lui, quelqu\'un qui '
+        'intercepte un virement pourrait le renvoyer dix fois : la signature '
+        'resterait valable, et le compte se viderait.\n\n'
+        'Un virement depose attend dans une file, puis un mineur l\'inscrit '
+        'dans un bloc. C\'est a ce moment qu\'il devient definitif : les '
+        'virements entrent dans l\'empreinte du bloc, donc dans sa preuve de '
+        'travail. Les modifier apres coup demanderait de refaire tout le '
+        'travail.\n\n'
+        'Ta recompense de minage va maintenant a ton adresse plutot que dans '
+        'un compteur. Le Tibo est devenu une monnaie qui se possede et se '
+        'donne - et qui ne vaut toujours rien.',
+    Icons.send_rounded,
+  ),
+  _ChapterData(
     'Compiler l\'APK et le .exe',
     'Le projet est compile par GitHub Actions, pas par ton telephone. A chaque '
         'envoi de code sur la branche main, GitHub construit :\n\n'

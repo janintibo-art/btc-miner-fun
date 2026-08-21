@@ -55,6 +55,8 @@ SYMBOLES = {
     "chain_network": "ChainNetwork",
     "celebration": "Celebration",
     "local_currency": ["LocalLedger", "LocalAccount", "LocalTransfer"],
+    "tibo_keys": "TiboIdentity",
+    "tibo_tx": ["TiboTx", "TiboState"],
     "hash_roulette_screen": "HashRouletteScreen",
     "certificate_screen": "CertificateScreen",
     "miner_ranking": ["MinerScore", "rankMiners", "luckiestBlock"],

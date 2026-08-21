@@ -14,6 +14,7 @@
 const http = require('http');
 const fs = require('fs');
 const path = require('path');
+const { rejouer, formeValide, signatureValide } = require('./tibo_tx.js');
 const {
   blockHash,
   hasValidShape,
@@ -30,6 +31,13 @@ const MAX_BLOCS = 100000;
 const MAX_CORPS = 4 * 1024 * 1024; // 4 Mio : de quoi loger une longue chaine
 
 let etat = { rules: null, blocks: [] };
+
+/// Virements recus mais pas encore inclus dans un bloc.
+///
+/// Ils attendent qu'un mineur les prenne, exactement comme le mempool de
+/// Bitcoin. Le serveur les verifie des la reception : inutile de faire
+/// travailler un mineur sur un virement qui sera refuse.
+let enAttente = [];
 
 // --- Persistance -----------------------------------------------------------
 // Sur un hebergement gratuit, le disque est souvent efface au redemarrage.
@@ -114,6 +122,7 @@ function resume() {
     bits: tete ? tete.b : null,
     rules: etat.rules,
     work: totalWork(etat.blocks).toString(),
+    pending: enAttente.length,
   };
 }
 
@@ -132,6 +141,76 @@ const serveur = http.createServer(async (req, res) => {
   // La chaine complete.
   if (req.method === 'GET' && url.pathname === '/chain') {
     return repondre(res, 200, etat);
+  }
+
+  // Les soldes, recalcules depuis la chaine a chaque appel.
+  if (req.method === 'GET' && url.pathname === '/balances') {
+    const resultat = rejouer(etat.blocks);
+    if (!resultat.ok) {
+      return repondre(res, 500, { error: resultat.probleme });
+    }
+    const soldes = {};
+    const ordres = {};
+    resultat.soldes.forEach((v, k) => { soldes[k] = v; });
+    resultat.ordres.forEach((v, k) => { ordres[k] = v; });
+    return repondre(res, 200, { soldes, ordres, pending: enAttente.length });
+  }
+
+  // Les virements en attente d'un bloc.
+  if (req.method === 'GET' && url.pathname === '/pending') {
+    return repondre(res, 200, { tx: enAttente });
+  }
+
+  // Deposer un virement.
+  if (req.method === 'POST' && url.pathname === '/tx') {
+    let tx;
+    try {
+      tx = await lireCorps(req);
+    } catch (e) {
+      return repondre(res, 400, { accepted: false, reason: e.message });
+    }
+
+    if (!formeValide(tx)) {
+      return repondre(res, 400, { accepted: false, reason: 'virement mal forme' });
+    }
+    if (!signatureValide(tx)) {
+      return repondre(res, 400, {
+        accepted: false,
+        reason: 'signature invalide : cette cle ne commande pas ce compte',
+      });
+    }
+    if (enAttente.length >= 100) {
+      return repondre(res, 507, { accepted: false, reason: 'file pleine' });
+    }
+
+    // Le virement doit etre finançable et bien numerote au moment ou il
+    // sera inclus : on le verifie contre l'etat courant plus la file.
+    const resultat = rejouer(etat.blocks);
+    if (!resultat.ok) {
+      return repondre(res, 500, { accepted: false, reason: resultat.probleme });
+    }
+    let solde = resultat.soldes.get(tx.f) || 0;
+    let ordre = resultat.ordres.get(tx.f) || 0;
+    for (const attente of enAttente) {
+      if (attente.f === tx.f) { solde -= attente.a; ordre = attente.s; }
+      if (attente.t === tx.f) solde += attente.a;
+    }
+    if (solde < tx.a) {
+      return repondre(res, 409, { accepted: false, reason: 'solde insuffisant' });
+    }
+    if (tx.s !== ordre + 1) {
+      return repondre(res, 409, {
+        accepted: false,
+        reason: `numero d'ordre attendu ${ordre + 1}`,
+      });
+    }
+    if (enAttente.some((a) => a.g === tx.g)) {
+      return repondre(res, 409, { accepted: false, reason: 'deja en attente' });
+    }
+
+    enAttente.push(tx);
+    console.log(`Virement en attente : ${tx.a} de ${tx.f.slice(0, 10)}...`);
+    return repondre(res, 200, { accepted: true, pending: enAttente.length });
   }
 
   // Soumission d'un bloc unique : le cas normal quand on mine.
@@ -203,7 +282,17 @@ const serveur = http.createServer(async (req, res) => {
       });
     }
 
+    // Le bloc ne doit pas rendre la chaine incoherente : on rejoue avant
+    // d'accepter, plutot que de decouvrir le probleme plus tard.
+    const apres = rejouer([...etat.blocks, bloc]);
+    if (!apres.ok) {
+      return repondre(res, 400, { accepted: false, reason: apres.probleme });
+    }
+
     etat.blocks.push(bloc);
+    // Les virements inclus quittent la file.
+    const inclus = new Set((bloc.tx || []).map((t) => t.g));
+    enAttente = enAttente.filter((t) => !inclus.has(t.g));
     sauvegarder();
     console.log(`Bloc ${bloc.h} accepte : ${blockHash(bloc).slice(0, 16)}...`);
     return repondre(res, 200, {
@@ -262,7 +351,13 @@ const serveur = http.createServer(async (req, res) => {
       });
     }
 
+    const rejeu = rejouer(blocs);
+    if (!rejeu.ok) {
+      return repondre(res, 400, { accepted: false, reason: rejeu.probleme });
+    }
+
     etat = { rules: envoi.rules || etat.rules, blocks: blocs };
+    enAttente = [];
     sauvegarder();
     console.log(`Chaine adoptee : ${blocs.length} blocs.`);
     return repondre(res, 200, { accepted: true, height: blocs.length });

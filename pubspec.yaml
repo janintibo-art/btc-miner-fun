@@ -1,7 +1,7 @@
 name: btc_miner_fun
 description: "Mineur Bitcoin reel et pedagogique - Android + Windows"
 publish_to: 'none'
-version: 0.42.0+42
+version: 0.43.0+43
 
 environment:
   sdk: '>=3.7.0 <4.0.0'
@@ -15,6 +15,8 @@ dependencies:
   wakelock_plus: ^1.2.5
   qr_flutter: ^4.1.0
   ffi: ^2.1.0
+  # Signature ECDSA secp256k1 : aucune cryptographie n'est ecrite ici.
+  pointycastle: ^3.9.1
   blockchain_utils: 7.1.0
   flutter_secure_storage: 11.0.0
 

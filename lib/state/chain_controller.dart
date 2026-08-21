@@ -8,6 +8,8 @@ import '../core/chain_network.dart';
 import '../core/foreground_service.dart';
 import '../core/my_chain.dart';
 import '../core/my_chain_miner.dart';
+import '../core/tibo_keys.dart';
+import '../core/tibo_tx.dart';
 import '../core/platform_profile.dart';
 
 /// Pilote la chaine personnelle : creation, minage, verification.
@@ -29,6 +31,11 @@ class ChainController extends ChangeNotifier {
 
   /// Adresse du serveur de chaine partagee. Vide : la chaine reste locale.
   String serverUrl = '';
+
+  /// L'identite Tibo, derivee de la phrase du portefeuille. Nulle tant
+  /// qu'aucun portefeuille n'existe : on ne peut pas etre paye sans adresse.
+  TiboIdentity? identity;
+  List<TiboTx> pending = <TiboTx>[];
   RemoteHead? remoteHead;
   bool syncing = false;
 
@@ -71,6 +78,69 @@ class ChainController extends ChangeNotifier {
         ? 'Chaine repassee en local.'
         : 'Serveur configure : $serverUrl');
     notifyListeners();
+  }
+
+  /// Etablit l'identite Tibo depuis la phrase de recuperation du
+  /// portefeuille.
+  ///
+  /// La phrase ne quitte pas cet appel : seules l'adresse et la cle publique
+  /// sont exposees, la cle privee restant dans l'objet en memoire.
+  void unlockIdentity(String mnemonic) {
+    try {
+      identity = TiboIdentity.fromMnemonic(mnemonic);
+      _note('Adresse Tibo : ${identity!.address}');
+    } catch (e) {
+      _note('Phrase invalide : impossible de deriver une adresse.');
+      identity = null;
+    }
+    notifyListeners();
+  }
+
+  /// Solde d'une adresse, recalcule depuis la chaine a chaque appel.
+  double balanceOf(String address) =>
+      chain == null ? 0 : chain!.replay().balanceOf(address);
+
+  /// Signe et depose un virement. Renvoie une raison de refus, ou du vide.
+  Future<String> send(String to, double amount, String note) async {
+    final moi = identity;
+    final courante = chain;
+    if (moi == null) return 'Aucune identite : cree d\'abord un portefeuille.';
+    if (courante == null) return 'Aucune chaine.';
+    if (!TiboIdentity.isValidAddress(to)) return 'Adresse destinataire invalide.';
+    if (amount <= 0) return 'Le montant doit etre positif.';
+    if (!isShared) {
+      return 'Un virement passe par le serveur : configure-le d\'abord.';
+    }
+
+    final etat = courante.replay();
+    if (etat.balanceOf(moi.address) < amount) {
+      return 'Solde insuffisant : tu as '
+          '${etat.balanceOf(moi.address).toStringAsFixed(2)}.';
+    }
+
+    final sequence = etat.nextSequence(moi.address);
+    final tx = TiboTx(
+      from: moi.address,
+      to: to,
+      amount: amount,
+      sequence: sequence,
+      publicKey: moi.publicKeyHex,
+      signature: moi.sign(TiboTx.message(
+        from: moi.address,
+        to: to,
+        amount: amount,
+        sequence: sequence,
+        note: note,
+      )),
+      note: note,
+    );
+
+    final resultat = await _network.submitTx(tx);
+    _note(resultat.accepted
+        ? 'Virement depose, en attente d\'un bloc.'
+        : 'Virement refuse : ${resultat.message}');
+    notifyListeners();
+    return resultat.accepted ? '' : resultat.message;
   }
 
   /// Confronte la chaine locale a celle du serveur.
@@ -200,7 +270,17 @@ class ChainController extends ChangeNotifier {
     }
 
     while (!_stopRequested) {
-      final candidate = current.prepareNext(DateTime.now(), message);
+      // Les virements en attente sont repris a chaque bloc : un bloc qui n'en
+      // inclut aucun ne sert qu'a son mineur.
+      if (isShared) {
+        pending = await _network.pendingTx();
+      }
+      final candidate = current.prepareNext(
+        DateTime.now(),
+        message,
+        miner: identity?.address ?? '',
+        transactions: pending,
+      );
       final header = candidate.header();
       var nonce = 0;
       var hashes = 0;
@@ -252,6 +332,8 @@ class ChainController extends ChangeNotifier {
         if (result.found) {
           found = true;
           final mined = MyBlock(
+            miner: candidate.miner,
+            transactions: candidate.transactions,
             height: candidate.height,
             version: candidate.version,
             previousHash: candidate.previousHash,
